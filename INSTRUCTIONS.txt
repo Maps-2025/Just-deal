@@ -1,0 +1,51 @@
+================================================================
+JUST DEAL — Frontend Patch Instructions
+================================================================
+
+Only 5 files change. Copy each file into your existing project:
+
+STEP 1 — Copy these files into your project
+--------------------------------------------
+
+File 1:  src/services/api.ts          ← NEW file (create this)
+File 2:  src/hooks/useDeals.ts        ← REPLACE existing file
+File 3:  src/types/deals.ts           ← REPLACE existing file
+File 4:  src/components/deals/AddDealModal.tsx  ← REPLACE existing file
+File 5:  .env                         ← REPLACE existing file
+
+
+STEP 2 — Delete this folder from your project
+----------------------------------------------
+
+DELETE:  src/integrations/supabase/
+         (the frontend no longer talks to Supabase directly)
+
+
+STEP 3 — Install nothing new
+-----------------------------
+
+No new npm packages needed. All existing packages still work.
+
+
+STEP 4 — Start both servers
+----------------------------
+
+Terminal 1 (Backend):
+  cd just-deal-backend
+  npm run dev            ← runs on localhost:3001
+
+Terminal 2 (Frontend):
+  cd your-frontend-folder
+  npm run dev            ← runs on localhost:8080
+
+================================================================
+ARCHITECTURE AFTER THIS CHANGE
+================================================================
+
+BEFORE (wrong):
+  Browser → Supabase directly (bypasses backend)
+
+AFTER (correct industrial architecture):
+  Browser → Express Backend (localhost:3001) → Supabase DB
+
+================================================================

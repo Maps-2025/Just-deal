@@ -1,63 +1,70 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { DealWithProperty, RentRollUnit } from "@/types/deals";
+import { dealsApi, rentRollApi } from "@/services/api";
+import type { DealWithProperty } from "@/types/deals";
+import type { RentRollUnit, GetDealsParams } from "@/services/api";
 
-export function useDeals() {
+// ─── Normalise deal so both deal.property and deal.properties work ────────────
+function normaliseDeal(deal: any): DealWithProperty {
+  return {
+    ...deal,
+    property: deal.property ?? null,
+    properties: deal.property ?? null, // alias for existing components
+  };
+}
+
+// ─── List all deals ───────────────────────────────────────────────────────────
+export function useDeals(params: GetDealsParams = {}) {
   return useQuery({
-    queryKey: ["deals"],
+    queryKey: ["deals", params],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("deals")
-        .select("*, properties(*)")
-        .order("date_added", { ascending: false });
-      if (error) throw error;
-      return data as DealWithProperty[];
+      const res = await dealsApi.list(params);
+      // res = { success, data: Deal[], meta: {...} }
+      return (res.data ?? []).map(normaliseDeal) as DealWithProperty[];
     },
   });
 }
 
+// ─── Single deal ──────────────────────────────────────────────────────────────
 export function useDeal(dealId: string | undefined) {
   return useQuery({
     queryKey: ["deals", dealId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("deals")
-        .select("*, properties(*)")
-        .eq("id", dealId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data as DealWithProperty | null;
+      const deal = await dealsApi.get(dealId!);
+      return normaliseDeal(deal) as DealWithProperty;
     },
     enabled: !!dealId,
   });
 }
 
+// ─── Rent roll units (latest snapshot) ───────────────────────────────────────
 export function useRentRollUnits(dealId: string | undefined) {
   return useQuery({
     queryKey: ["rent-roll-units", dealId],
     queryFn: async () => {
-      // First get rent_rolls for this deal
-      const { data: rentRolls, error: rrError } = await supabase
-        .from("rent_rolls")
-        .select("id")
-        .eq("deal_pk", dealId!)
-        .order("report_date", { ascending: false })
-        .limit(1);
-      if (rrError) throw rrError;
-      if (!rentRolls || rentRolls.length === 0) return [];
-
-      const { data, error } = await supabase
-        .from("rent_roll_units")
-        .select("*")
-        .eq("rent_roll_id", rentRolls[0].id)
-        .order("unit_no");
-      if (error) throw error;
-      return data as RentRollUnit[];
+      const res = await rentRollApi.units(dealId!, { limit: 200 });
+      return (res.data ?? []) as RentRollUnit[];
     },
     enabled: !!dealId,
   });
 }
 
+// ─── Deal stats (for future dashboard) ───────────────────────────────────────
+export function useDealStats() {
+  return useQuery({
+    queryKey: ["deal-stats"],
+    queryFn: () => dealsApi.stats(),
+  });
+}
+
+// ─── Status categories (for filter dropdown) ─────────────────────────────────
+export function useStatusCategories() {
+  return useQuery({
+    queryKey: ["status-categories"],
+    queryFn: () => dealsApi.statusCategories(),
+  });
+}
+
+// ─── Create deal ──────────────────────────────────────────────────────────────
 export function useCreateDeal() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -73,31 +80,42 @@ export function useCreateDeal() {
       zip?: string;
       market?: string;
     }) => {
-      const { address, city, state, zip, market, ...dealData } = input;
-      const { data: deal, error: dealError } = await supabase
-        .from("deals")
-        .insert(dealData)
-        .select()
-        .single();
-      if (dealError) throw dealError;
-
-      // Create property record
-      if (address || city || state || zip || market) {
-        const { error: propError } = await supabase
-          .from("properties")
-          .insert({
-            deal_pk: deal.id,
-            address,
-            city,
-            state,
-            zip,
-            market,
-          });
-        if (propError) throw propError;
-      }
-
-      return deal;
+      return dealsApi.create(input);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+    },
+  });
+}
+
+// ─── Update deal ──────────────────────────────────────────────────────────────
+export function useUpdateDeal(dealId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => dealsApi.update(dealId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals", dealId] });
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+    },
+  });
+}
+
+// ─── Toggle star ──────────────────────────────────────────────────────────────
+export function useToggleStar() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dealId: string) => dealsApi.toggleStar(dealId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+    },
+  });
+}
+
+// ─── Delete deal ──────────────────────────────────────────────────────────────
+export function useDeleteDeal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dealId: string) => dealsApi.delete(dealId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
     },

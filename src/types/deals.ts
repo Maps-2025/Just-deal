@@ -1,17 +1,26 @@
-import type { Tables } from "@/integrations/supabase/types";
+// All types now come from the API service layer — no Supabase dependency
+export type {
+  Deal,
+  Property,
+  RentRollSummary,
+  RentRollUnit,
+  UnitMixRow,
+  OsSummary,
+  OsLineItem,
+  OperatingStatement,
+  NOISummary,
+  DealStats,
+  GetDealsParams,
+  GetUnitsParams,
+} from '@/services/api';
 
-// DB row types
-export type Deal = Tables<"deals">;
-export type Property = Tables<"properties">;
-export type RentRoll = Tables<"rent_rolls">;
-export type RentRollUnit = Tables<"rent_roll_units">;
-export type OperatingStatement = Tables<"operating_statements">;
-export type OperatingStatementLineItem = Tables<"operating_statement_line_items">;
-export type Organization = Tables<"organizations">;
+import type { Deal, Property } from '@/services/api';
 
-// Deal with joined property
+// DealWithProperty — backend returns "property" (singular) for deal detail
 export interface DealWithProperty extends Deal {
-  properties: Property | null;
+  property: Property | null;
+  // alias so existing components using deal.properties still work
+  properties?: Property | null;
 }
 
-export type DealStatus = Deal["status"];
+export type DealStatus = Deal['status'];
