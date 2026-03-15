@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { RentRollUnit } from "@/types/deals";
+import type { RentRollUnit } from "@/types/deals";
 
 interface RentRollViewerProps {
   units: RentRollUnit[];
@@ -17,8 +17,10 @@ export function RentRollViewer({ units }: RentRollViewerProps) {
     );
   }
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n);
+  const formatCurrency = (n: number | null) =>
+    n != null
+      ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n)
+      : "—";
 
   return (
     <div className="overflow-auto">
@@ -26,10 +28,10 @@ export function RentRollViewer({ units }: RentRollViewerProps) {
         <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
           <tr className="border-b">
             <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Unit</th>
-            <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Type</th>
+            <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Floor Plan</th>
             <th className="text-right font-medium text-muted-foreground px-4 py-2.5">Sq Ft</th>
             <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Status</th>
-            <th className="text-right font-medium text-muted-foreground px-4 py-2.5">Current Rent</th>
+            <th className="text-right font-medium text-muted-foreground px-4 py-2.5">Contractual Rent</th>
             <th className="text-right font-medium text-muted-foreground px-4 py-2.5">Market Rent</th>
             <th className="text-right font-medium text-muted-foreground px-4 py-2.5">Variance</th>
             <th className="text-left font-medium text-muted-foreground px-4 py-2.5">Lease End</th>
@@ -37,7 +39,10 @@ export function RentRollViewer({ units }: RentRollViewerProps) {
         </thead>
         <tbody>
           {units.map((unit, i) => {
-            const variance = unit.marketRent - unit.currentRent;
+            const variance =
+              unit.market_rent != null && unit.contractual_rent != null
+                ? unit.market_rent - unit.contractual_rent
+                : null;
             return (
               <tr
                 key={unit.id}
@@ -46,27 +51,27 @@ export function RentRollViewer({ units }: RentRollViewerProps) {
                   i % 2 === 0 && "bg-muted/30"
                 )}
               >
-                <td className="px-4 font-mono text-sm">{unit.unitNumber}</td>
-                <td className="px-4 text-muted-foreground">{unit.unitType}</td>
-                <td className="px-4 text-right font-mono">{unit.sqft.toLocaleString()}</td>
+                <td className="px-4 font-mono text-sm">{unit.unit_no || "—"}</td>
+                <td className="px-4 text-muted-foreground">{unit.floor_plan || "—"}</td>
+                <td className="px-4 text-right font-mono">{unit.net_sqft?.toLocaleString() ?? "—"}</td>
                 <td className="px-4">
                   <span
                     className={cn(
                       "text-xs font-medium px-2 py-0.5 rounded-sm",
-                      unit.status === "Occupied" && "bg-success/10 text-success",
-                      unit.status === "Vacant" && "bg-destructive/10 text-destructive",
-                      unit.status === "Notice" && "bg-warning/10 text-warning"
+                      unit.occupancy_status === "Occupied" && "bg-success/10 text-success",
+                      unit.occupancy_status === "Vacant" && "bg-destructive/10 text-destructive",
+                      unit.occupancy_status === "Notice" && "bg-warning/10 text-warning"
                     )}
                   >
-                    {unit.status}
+                    {unit.occupancy_status || "—"}
                   </span>
                 </td>
-                <td className="px-4 text-right font-mono">{formatCurrency(unit.currentRent)}</td>
-                <td className="px-4 text-right font-mono">{formatCurrency(unit.marketRent)}</td>
-                <td className={cn("px-4 text-right font-mono", variance > 0 ? "text-success" : "text-destructive")}>
-                  {variance > 0 ? "+" : ""}{formatCurrency(variance)}
+                <td className="px-4 text-right font-mono">{formatCurrency(unit.contractual_rent)}</td>
+                <td className="px-4 text-right font-mono">{formatCurrency(unit.market_rent)}</td>
+                <td className={cn("px-4 text-right font-mono", variance != null && (variance > 0 ? "text-success" : "text-destructive"))}>
+                  {variance != null ? `${variance > 0 ? "+" : ""}${formatCurrency(variance)}` : "—"}
                 </td>
-                <td className="px-4 text-muted-foreground">{unit.leaseEnd || "—"}</td>
+                <td className="px-4 text-muted-foreground">{unit.lease_end_date || "—"}</td>
               </tr>
             );
           })}

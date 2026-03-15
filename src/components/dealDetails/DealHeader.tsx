@@ -1,16 +1,16 @@
 import { FileText, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Deal } from "@/types/deals";
+import type { DealWithProperty } from "@/types/deals";
 
 interface DealHeaderProps {
-  deal: Deal;
+  deal: DealWithProperty;
 }
 
 export function DealHeader({ deal }: DealHeaderProps) {
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b">
       <h1 className="text-lg font-semibold tracking-tight">
-        {deal.dealId} – {deal.name}
+        {deal.deal_id} – {deal.deal_name}
       </h1>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm">

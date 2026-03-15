@@ -6,20 +6,21 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { DealsPageSidebar } from "@/components/deals/DealsPageSidebar";
 import { DealsTable } from "@/components/deals/DealsTable";
 import { AddDealModal } from "@/components/deals/AddDealModal";
-import { mockDeals } from "@/data/mockDeals";
+import { useDeals } from "@/hooks/useDeals";
 
 export default function DealsPage() {
   const [search, setSearch] = useState("");
   const [sidebarActive, setSidebarActive] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const { data: deals = [], isLoading } = useDeals();
 
   const filteredDeals = useMemo(() => {
-    if (!search) return mockDeals;
+    if (!search) return deals;
     const q = search.toLowerCase();
-    return mockDeals.filter(
-      (d) => d.name.toLowerCase().includes(q) || d.dealId.includes(q)
+    return deals.filter(
+      (d) => d.deal_name.toLowerCase().includes(q) || d.deal_id.includes(q)
     );
-  }, [search]);
+  }, [search, deals]);
 
   return (
     <AppLayout>
@@ -58,7 +59,13 @@ export default function DealsPage() {
         </div>
 
         {/* Table */}
-        <DealsTable deals={filteredDeals} />
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-muted-foreground text-sm">Loading deals…</p>
+          </div>
+        ) : (
+          <DealsTable deals={filteredDeals} />
+        )}
       </div>
 
       <AddDealModal open={modalOpen} onClose={() => setModalOpen(false)} />
