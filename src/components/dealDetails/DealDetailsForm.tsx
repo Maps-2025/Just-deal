@@ -1,13 +1,15 @@
-import { Deal } from "@/types/deals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { DealWithProperty } from "@/types/deals";
 
 interface DealDetailsFormProps {
-  deal: Deal;
+  deal: DealWithProperty;
 }
 
 export function DealDetailsForm({ deal }: DealDetailsFormProps) {
+  const prop = deal.properties;
+
   return (
     <div className="p-6 space-y-8">
       {/* Property Section */}
@@ -19,19 +21,19 @@ export function DealDetailsForm({ deal }: DealDetailsFormProps) {
         <div className="grid grid-cols-2 gap-x-12 gap-y-4">
           <div className="flex items-center gap-4">
             <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Deal Name</Label>
-            <Input defaultValue={deal.name} className="flex-1" />
-          </div>
-          <div className="flex items-center gap-4">
-            <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Assigned To</Label>
-            <Input defaultValue={deal.assignedTo || ""} className="flex-1" />
+            <Input defaultValue={deal.deal_name} className="flex-1" />
           </div>
           <div className="flex items-center gap-4">
             <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Asset Type</Label>
-            <Input defaultValue={deal.assetType} className="flex-1" />
+            <Input defaultValue={deal.asset_type} className="flex-1" />
           </div>
           <div className="flex items-center gap-4">
-            <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Last Modified By</Label>
-            <p className="text-sm">{deal.lastModifiedBy || "—"}</p>
+            <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Deal Type</Label>
+            <Input defaultValue={deal.deal_type || ""} className="flex-1" />
+          </div>
+          <div className="flex items-center gap-4">
+            <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Fund</Label>
+            <Input defaultValue={deal.fund || ""} className="flex-1" />
           </div>
         </div>
       </div>
@@ -42,23 +44,23 @@ export function DealDetailsForm({ deal }: DealDetailsFormProps) {
         <div className="grid grid-cols-2 gap-x-12 gap-y-4">
           <div className="flex items-center gap-4">
             <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Address</Label>
-            <Input defaultValue={deal.address} className="flex-1" />
+            <Input defaultValue={prop?.address || ""} className="flex-1" />
           </div>
           <div className="flex items-center gap-4">
             <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">Market</Label>
-            <p className="text-sm">{deal.market}</p>
+            <Input defaultValue={prop?.market || ""} className="flex-1" />
           </div>
           <div className="flex items-center gap-4">
             <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">City</Label>
-            <Input defaultValue={deal.city} className="flex-1" />
+            <Input defaultValue={prop?.city || ""} className="flex-1" />
           </div>
           <div className="flex items-center gap-4">
             <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">State</Label>
-            <Input defaultValue={deal.state} className="flex-1 w-20" />
+            <Input defaultValue={prop?.state || ""} className="flex-1 w-20" />
           </div>
           <div className="flex items-center gap-4">
             <Label className="w-32 text-sm text-muted-foreground flex-shrink-0">ZIP</Label>
-            <Input defaultValue={deal.zip} className="flex-1" />
+            <Input defaultValue={prop?.zip || ""} className="flex-1" />
           </div>
         </div>
       </div>

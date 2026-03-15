@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DealHeader } from "@/components/dealDetails/DealHeader";
 import { DealTabs } from "@/components/dealDetails/DealTabs";
@@ -9,14 +8,25 @@ import { DealInfoCard } from "@/components/dealDetails/DealInfoCard";
 import { DealActionsCard } from "@/components/dealDetails/DealActionsCard";
 import { DealDetailsForm } from "@/components/dealDetails/DealDetailsForm";
 import { RentRollViewer } from "@/components/dealDetails/RentRollViewer";
-import { mockDeals, mockRentRoll } from "@/data/mockDeals";
+import { useDeal, useRentRollUnits } from "@/hooks/useDeals";
 
 export default function DealDetailPage() {
   const { dealId } = useParams<{ dealId: string }>();
   const [activeTab, setActiveTab] = useState("overview");
   const [overviewSection, setOverviewSection] = useState("summary");
 
-  const deal = mockDeals.find((d) => d.id === dealId);
+  const { data: deal, isLoading } = useDeal(dealId);
+  const { data: rentRollUnits = [] } = useRentRollUnits(dealId);
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground text-sm">Loading deal…</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!deal) {
     return (
@@ -47,7 +57,6 @@ export default function DealDetailPage() {
 
         {activeTab === "overview" && (
           <div className="flex-1 flex min-h-0">
-            {/* Overview sub-nav */}
             <div className="w-40 border-r pt-4 px-3 flex-shrink-0">
               {overviewSections.map((s) => (
                 <button
@@ -64,7 +73,6 @@ export default function DealDetailPage() {
               ))}
             </div>
 
-            {/* Main content */}
             <div className="flex-1 overflow-auto">
               {overviewSection === "summary" && (
                 <div className="p-6 grid grid-cols-[1fr_280px_280px] gap-4">
@@ -87,7 +95,7 @@ export default function DealDetailPage() {
 
         {activeTab === "rent-roll" && (
           <div className="flex-1 overflow-auto">
-            <RentRollViewer units={deal.id === "1" ? mockRentRoll : []} />
+            <RentRollViewer units={rentRollUnits} />
           </div>
         )}
 

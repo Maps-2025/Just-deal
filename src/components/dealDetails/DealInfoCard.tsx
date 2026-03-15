@@ -1,16 +1,16 @@
-import { Deal } from "@/types/deals";
+import type { DealWithProperty } from "@/types/deals";
 
 interface DealInfoCardProps {
-  deal: Deal;
+  deal: DealWithProperty;
 }
 
 export function DealInfoCard({ deal }: DealInfoCardProps) {
   const fields = [
     { label: "Deal Status", value: deal.status },
-    { label: "Bid Due Date", value: deal.bidDueDate || "—" },
-    { label: "Due Diligence Date", value: "—" },
+    { label: "Bid Due Date", value: deal.bid_due_date || "—" },
+    { label: "Due Diligence Date", value: deal.due_diligence_date || "—" },
     { label: "Broker", value: deal.broker || "—" },
-    { label: "Broker Email", value: deal.brokerEmail || "—" },
+    { label: "Broker Email", value: deal.broker_email || "—" },
   ];
 
   return (
