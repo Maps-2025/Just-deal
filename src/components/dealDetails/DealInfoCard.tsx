@@ -5,12 +5,21 @@ interface DealInfoCardProps {
 }
 
 export function DealInfoCard({ deal }: DealInfoCardProps) {
+  const formatDate = (d: string | null) => {
+    if (!d) return "—";
+    try { return new Date(d).toLocaleDateString(); } catch { return d; }
+  };
+
   const fields = [
     { label: "Deal Status", value: deal.status },
-    { label: "Bid Due Date", value: deal.bid_due_date || "—" },
-    { label: "Due Diligence Date", value: deal.due_diligence_date || "—" },
+    { label: "Bid Due Date", value: formatDate(deal.bid_due_date) },
+    { label: "Due Diligence Date", value: formatDate(deal.due_diligence_date) },
     { label: "Broker", value: deal.broker || "—" },
     { label: "Broker Email", value: deal.broker_email || "—" },
+    { label: "Broker Phone", value: deal.broker_phone || "—" },
+    { label: "Fund", value: deal.fund || "—" },
+    { label: "Asset Type", value: deal.asset_type },
+    { label: "Deal Type", value: deal.deal_type || "—" },
   ];
 
   return (
