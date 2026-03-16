@@ -353,7 +353,7 @@ export const rentRollApi = {
 
   units: (dealId: string, params: GetUnitsParams = {}) =>
     request<PaginatedApiResponse<RentRollUnit> & { rent_roll: RentRollSummary }>(
-      `/deals/${dealId}/rent-roll/units${qs(params)}`
+      `/deals/${dealId}/rent-roll/units${qs(params as unknown as Record<string, unknown>)}`
     ),
 
   unitMix: async (dealId: string) => {
