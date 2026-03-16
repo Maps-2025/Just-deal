@@ -254,7 +254,7 @@ export interface GetDealsParams {
 
 export const dealsApi = {
   list: (params: GetDealsParams = {}) =>
-    request<PaginatedApiResponse<Deal>>(`/deals${qs(params)}`),
+    request<PaginatedApiResponse<Deal>>(`/deals${qs(params as unknown as Record<string, unknown>)}`),
 
   get: async (id: string) => {
     const res = await request<ApiResponse<Deal>>(`/deals/${id}`);
