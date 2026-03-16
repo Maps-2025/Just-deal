@@ -7,7 +7,7 @@ import { DealSummaryCard } from "@/components/dealDetails/DealSummaryCard";
 import { DealInfoCard } from "@/components/dealDetails/DealInfoCard";
 import { DealActionsCard } from "@/components/dealDetails/DealActionsCard";
 import { DealDetailsForm } from "@/components/dealDetails/DealDetailsForm";
-import { RentRollViewer } from "@/components/dealDetails/RentRollViewer";
+import { RentRollModule } from "@/features/rentRoll/RentRollModule";
 import { LocationCard } from "@/components/dealDetails/LocationCard";
 import { CharacteristicsCard } from "@/components/dealDetails/CharacteristicsCard";
 import { AmenitiesCard } from "@/components/dealDetails/AmenitiesCard";
@@ -15,7 +15,7 @@ import { ValuationCard } from "@/components/dealDetails/ValuationCard";
 import { TransactionInfoCard } from "@/components/dealDetails/TransactionInfoCard";
 import { PreviousSaleCard } from "@/components/dealDetails/PreviousSaleCard";
 import { CommentsCard } from "@/components/dealDetails/CommentsCard";
-import { useDeal, useRentRollUnits } from "@/hooks/useDeals";
+import { useDeal } from "@/hooks/useDeals";
 
 export default function DealDetailPage() {
   const { dealId } = useParams<{ dealId: string }>();
@@ -25,7 +25,6 @@ export default function DealDetailPage() {
   const [overviewSection, setOverviewSection] = useState(defaultSection);
 
   const { data: deal, isLoading } = useDeal(dealId);
-  const { data: rentRollUnits = [] } = useRentRollUnits(dealId);
 
   if (isLoading) {
     return (
@@ -116,9 +115,9 @@ export default function DealDetailPage() {
           </div>
         )}
 
-        {activeTab === "rent-roll" && (
-          <div className="flex-1 overflow-auto">
-            <RentRollViewer units={rentRollUnits} />
+        {activeTab === "rent-roll" && dealId && (
+          <div className="flex-1 flex flex-col overflow-auto">
+            <RentRollModule dealId={dealId} />
           </div>
         )}
 
