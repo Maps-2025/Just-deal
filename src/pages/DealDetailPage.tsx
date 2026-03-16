@@ -115,9 +115,9 @@ export default function DealDetailPage() {
           </div>
         )}
 
-        {activeTab === "rent-roll" && (
-          <div className="flex-1 overflow-auto">
-            <RentRollViewer units={rentRollUnits} />
+        {activeTab === "rent-roll" && dealId && (
+          <div className="flex-1 flex flex-col overflow-auto">
+            <RentRollModule dealId={dealId} />
           </div>
         )}
 
