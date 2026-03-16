@@ -7,7 +7,7 @@ import { DealSummaryCard } from "@/components/dealDetails/DealSummaryCard";
 import { DealInfoCard } from "@/components/dealDetails/DealInfoCard";
 import { DealActionsCard } from "@/components/dealDetails/DealActionsCard";
 import { DealDetailsForm } from "@/components/dealDetails/DealDetailsForm";
-import { RentRollViewer } from "@/components/dealDetails/RentRollViewer";
+import { RentRollModule } from "@/features/rentRoll/RentRollModule";
 import { LocationCard } from "@/components/dealDetails/LocationCard";
 import { CharacteristicsCard } from "@/components/dealDetails/CharacteristicsCard";
 import { AmenitiesCard } from "@/components/dealDetails/AmenitiesCard";
