@@ -16,12 +16,17 @@ interface RentRollDashboardProps {
 
 export function RentRollDashboard({ dealId, rentRollId, onBack, onNavigate }: RentRollDashboardProps) {
   const [selectedRRId, setSelectedRRId] = useState(rentRollId);
+  const [monthlyRentMode, setMonthlyRentMode] = useState("per_unit");
+  const [inPlaceRentType, setInPlaceRentType] = useState("contractual");
+  const [leaseExpBy, setLeaseExpBy] = useState("units");
+  const [leaseExpShown, setLeaseExpShown] = useState("by_bed");
+  const [detailFilters, setDetailFilters] = useState<string[]>([]);
+
   const { data: rentRolls = [] } = useRentRollList(dealId);
   const { data: dashboard, isLoading } = useRentRollDashboard(dealId, selectedRRId);
 
   const selectedRR = rentRolls.find((r) => r.id === selectedRRId);
 
-  // Build chart data from dashboard response
   const monthlyRentData = dashboard?.unit_types?.map((ut) => ({
     name: ut.name,
     "In-Place": 0,
@@ -29,13 +34,10 @@ export function RentRollDashboard({ dealId, rentRollId, onBack, onNavigate }: Re
   })) || [];
 
   const occupancyData = dashboard
-    ? [
-        { name: "All Units", Occupied: dashboard.occupied || 0, Vacant: (dashboard.total_units || 0) - (dashboard.occupied || 0) },
-      ]
+    ? [{ name: "All Units", Occupied: dashboard.occupied || 0, Vacant: (dashboard.total_units || 0) - (dashboard.occupied || 0) }]
     : [];
 
   const fmtDollar = (v: number) => `$${v.toLocaleString()}`;
-  const fmtPct = (v: number) => `${v}%`;
 
   return (
     <div className="flex flex-1 min-h-0">
@@ -47,17 +49,27 @@ export function RentRollDashboard({ dealId, rentRollId, onBack, onNavigate }: Re
         onManage={() => onNavigate?.("rent-roll-manage")}
         onView={() => onNavigate?.("rent-roll-table")}
         hasAnomalies={selectedRR?.has_anomalies}
+        monthlyRentMode={monthlyRentMode}
+        onMonthlyRentModeChange={setMonthlyRentMode}
+        inPlaceRentType={inPlaceRentType}
+        onInPlaceRentTypeChange={setInPlaceRentType}
+        leaseExpBy={leaseExpBy}
+        onLeaseExpByChange={setLeaseExpBy}
+        leaseExpShown={leaseExpShown}
+        onLeaseExpShownChange={setLeaseExpShown}
+        detailFilters={detailFilters}
+        onDetailFiltersChange={setDetailFilters}
       />
 
       {/* Right Panel — Scrollable Dashboard */}
-      <div className="flex-1 overflow-y-auto bg-muted/30">
+      <div className="flex-1 overflow-y-auto bg-muted/20">
         <div className="p-6">
-          <h2 className="text-xl font-normal text-foreground text-center mb-6">Rent Roll Dashboard</h2>
+          <h2 className="text-xl font-normal text-foreground text-center mb-8">Rent Roll Dashboard</h2>
 
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-[280px] rounded-xl" />
+                <Skeleton key={i} className="h-[300px] rounded-xl" />
               ))}
             </div>
           ) : (
@@ -90,28 +102,18 @@ export function RentRollDashboard({ dealId, rentRollId, onBack, onNavigate }: Re
               {/* Row 3: Loss to Lease Burn-off */}
               <div className="grid grid-cols-1 gap-6">
                 <ChartCard title="Loss to Lease Burn-off">
-                  <BarChartWidget
-                    data={[]}
-                    bars={[{ dataKey: "loss", fill: "hsl(207, 57%, 41%)", name: "Loss to Lease" }]}
-                    xKey="month"
-                    emptyMessage="No Data Available For Loss to Lease Burn-off"
-                  />
+                  <BarChartWidget data={[]} bars={[{ dataKey: "loss", fill: "hsl(207, 57%, 41%)", name: "Loss to Lease" }]} xKey="month" emptyMessage="No Data Available For Loss to Lease Burn-off" />
                 </ChartCard>
               </div>
 
-              {/* Row 4: Lease Expiration Schedule */}
+              {/* Row 4: Lease Expiration */}
               <div className="grid grid-cols-1 gap-6">
                 <ChartCard title="Lease Expiration Schedule">
-                  <BarChartWidget
-                    data={[]}
-                    bars={[{ dataKey: "units", fill: "hsl(207, 57%, 41%)", name: "Units Expiring" }]}
-                    xKey="month"
-                    emptyMessage="No Data Available For Lease Expiration Schedule"
-                  />
+                  <BarChartWidget data={[]} bars={[{ dataKey: "units", fill: "hsl(207, 57%, 41%)", name: "Units Expiring" }]} xKey="month" emptyMessage="No Data Available For Lease Expiration Schedule" />
                 </ChartCard>
               </div>
 
-              {/* Row 5: Monthly Rents + Occupancy Status */}
+              {/* Row 5: Monthly Rents + Occupancy */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ChartCard title="Monthly Rents">
                   <BarChartWidget
@@ -121,8 +123,7 @@ export function RentRollDashboard({ dealId, rentRollId, onBack, onNavigate }: Re
                       { dataKey: "Market", fill: "hsl(207, 57%, 70%)", name: "Market" },
                     ]}
                     xKey="name"
-                    yLabel="$ per unit"
-                    xLabel="Unit Type"
+                    yLabel={monthlyRentMode === "per_unit" ? "$ per unit" : monthlyRentMode === "total" ? "$ total" : "$ per sf"}
                     formatY={fmtDollar}
                     emptyMessage="No Data Available For Monthly Rents"
                   />
@@ -135,50 +136,28 @@ export function RentRollDashboard({ dealId, rentRollId, onBack, onNavigate }: Re
                       { dataKey: "Vacant", fill: "hsl(207, 57%, 70%)", name: "Vacant" },
                     ]}
                     xKey="name"
-                    yLabel="% of Units"
-                    xLabel="Unit Type"
                     emptyMessage="No Data Available For Occupancy Status"
                   />
                 </ChartCard>
               </div>
 
-              {/* Row 6: In-Place Rent by Renovation Status + Renovation Premium */}
+              {/* Row 6: Renovation charts */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ChartCard title="In-Place Rent by Renovation Status">
-                  <BarChartWidget
-                    data={[]}
-                    bars={[{ dataKey: "rent", fill: "hsl(207, 57%, 41%)", name: "In-Place Rent" }]}
-                    xKey="status"
-                    emptyMessage="No Data Available For In-Place Rent by Renovation Status"
-                  />
+                  <BarChartWidget data={[]} bars={[{ dataKey: "rent", fill: "hsl(207, 57%, 41%)", name: "In-Place Rent" }]} xKey="status" emptyMessage="No Data Available For In-Place Rent by Renovation Status" />
                 </ChartCard>
                 <ChartCard title="Renovation Premium">
-                  <BarChartWidget
-                    data={[]}
-                    bars={[{ dataKey: "premium", fill: "hsl(207, 57%, 41%)", name: "Premium" }]}
-                    xKey="type"
-                    emptyMessage="No Data Available For Renovation Premium"
-                  />
+                  <BarChartWidget data={[]} bars={[{ dataKey: "premium", fill: "hsl(207, 57%, 41%)", name: "Premium" }]} xKey="type" emptyMessage="No Data Available For Renovation Premium" />
                 </ChartCard>
               </div>
 
-              {/* Row 7: Lease Type + Renovation Status bar charts */}
+              {/* Row 7: Lease Type + Renovation Status bars */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ChartCard title="Lease Type">
-                  <BarChartWidget
-                    data={[]}
-                    bars={[{ dataKey: "count", fill: "hsl(207, 57%, 41%)", name: "Units" }]}
-                    xKey="type"
-                    emptyMessage="No Data Available For Lease Type"
-                  />
+                  <BarChartWidget data={[]} bars={[{ dataKey: "count", fill: "hsl(207, 57%, 41%)", name: "Units" }]} xKey="type" emptyMessage="No Data Available For Lease Type" />
                 </ChartCard>
                 <ChartCard title="Renovation Status">
-                  <BarChartWidget
-                    data={[]}
-                    bars={[{ dataKey: "count", fill: "hsl(207, 57%, 41%)", name: "Units" }]}
-                    xKey="status"
-                    emptyMessage="No Data Available For Renovation Status"
-                  />
+                  <BarChartWidget data={[]} bars={[{ dataKey: "count", fill: "hsl(207, 57%, 41%)", name: "Units" }]} xKey="status" emptyMessage="No Data Available For Renovation Status" />
                 </ChartCard>
               </div>
             </div>
