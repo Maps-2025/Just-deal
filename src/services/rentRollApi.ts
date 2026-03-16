@@ -1,30 +1,28 @@
 /**
- * Rent Roll Capture API — calls the rent-roll edge function
- * Switch RENT_ROLL_URL to localhost:3001 when running Express backend locally
+ * Rent Roll Capture API — calls Express backend at localhost:3001
+ * All endpoints go through: /api/v1/deals/:dealId/rent-roll/...
  */
 
-const RENT_ROLL_URL =
-  import.meta.env.VITE_RENT_ROLL_API_URL ||
-  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rent-roll`;
+import { getToken } from './api';
 
-const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
 async function rrRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
   const headers: Record<string, string> = {
-    apikey: API_KEY,
-    Authorization: `Bearer ${API_KEY}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> || {}),
   };
 
   // Don't set Content-Type for FormData
   if (!(options.body instanceof FormData)) {
-    headers["Content-Type"] = "application/json";
+    headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${RENT_ROLL_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
   const json = await res.json().catch(() => ({ message: res.statusText }));
   if (!res.ok) {
-    const err = new Error(json.error || json.message || "API error") as Error & { status: number };
+    const err = new Error(json.message || json.error || 'API error') as Error & { status: number };
     err.status = res.status;
     throw err;
   }
@@ -124,110 +122,109 @@ export const rentRollCaptureApi = {
   /** Upload Excel file */
   upload: (dealId: string, file: File, totalUnits: number, reportDate?: string) => {
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("dealId", dealId);
-    formData.append("totalUnits", String(totalUnits));
-    if (reportDate) formData.append("reportDate", reportDate);
-    return rrRequest<UploadResponse>("", { method: "POST", body: formData });
+    formData.append('file', file);
+    formData.append('totalUnits', String(totalUnits));
+    if (reportDate) formData.append('reportDate', reportDate);
+    return rrRequest<UploadResponse>(`/deals/${dealId}/rent-roll/upload`, { method: 'POST', body: formData });
   },
 
   /** List rent rolls for a deal */
   list: async (dealId: string) => {
-    const res = await rrRequest<{ success: boolean; data: RentRollRecord[] }>(`?dealId=${dealId}`);
+    const res = await rrRequest<{ success: boolean; data: RentRollRecord[] }>(`/deals/${dealId}/rent-roll`);
     return res.data;
   },
 
   /** Get single rent roll */
-  get: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: RentRollRecord }>(`/${rentRollId}`);
+  get: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: RentRollRecord }>(`/deals/${dealId}/rent-roll/${rentRollId}`);
     return res.data;
   },
 
   /** Delete rent roll */
-  delete: (rentRollId: string) =>
-    rrRequest<{ success: boolean }>(`/${rentRollId}`, { method: "DELETE" }),
+  delete: (dealId: string, rentRollId: string) =>
+    rrRequest<{ success: boolean }>(`/deals/${dealId}/rent-roll/${rentRollId}`, { method: 'DELETE' }),
 
   /** Save column mapping */
-  saveMapping: (rentRollId: string, mapping: Record<string, string>) =>
-    rrRequest<{ success: boolean; data: { units_created: number } }>(`/${rentRollId}/mapping`, {
-      method: "POST",
+  saveMapping: (dealId: string, rentRollId: string, mapping: Record<string, string>) =>
+    rrRequest<{ success: boolean; data: { units_created: number } }>(`/deals/${dealId}/rent-roll/${rentRollId}/mapping`, {
+      method: 'POST',
       body: JSON.stringify({ mapping }),
     }),
 
   /** Get floor plans */
-  getFloorplans: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: FloorplanRow[] }>(`/${rentRollId}/floorplans`);
+  getFloorplans: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: FloorplanRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/floorplans`);
     return res.data;
   },
 
   /** Update floor plans */
-  updateFloorplans: (rentRollId: string, floorplans: FloorplanRow[]) =>
-    rrRequest<{ success: boolean }>(`/${rentRollId}/floorplans`, {
-      method: "PUT",
+  updateFloorplans: (dealId: string, rentRollId: string, floorplans: FloorplanRow[]) =>
+    rrRequest<{ success: boolean }>(`/deals/${dealId}/rent-roll/${rentRollId}/floorplans`, {
+      method: 'PUT',
       body: JSON.stringify({ floorplans }),
     }),
 
   /** Get occupancy */
-  getOccupancy: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: OccupancyRow[] }>(`/${rentRollId}/occupancy`);
+  getOccupancy: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: OccupancyRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/occupancy`);
     return res.data;
   },
 
   /** Update occupancy */
-  updateOccupancy: (rentRollId: string, occupancy: OccupancyRow[]) =>
-    rrRequest<{ success: boolean }>(`/${rentRollId}/occupancy`, {
-      method: "PUT",
+  updateOccupancy: (dealId: string, rentRollId: string, occupancy: OccupancyRow[]) =>
+    rrRequest<{ success: boolean }>(`/deals/${dealId}/rent-roll/${rentRollId}/occupancy`, {
+      method: 'PUT',
       body: JSON.stringify({ occupancy }),
     }),
 
   /** Get charges */
-  getCharges: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: ChargeRow[] }>(`/${rentRollId}/charges`);
+  getCharges: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: ChargeRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/charges`);
     return res.data;
   },
 
   /** Update charges */
-  updateCharges: (rentRollId: string, charges: ChargeRow[]) =>
-    rrRequest<{ success: boolean }>(`/${rentRollId}/charges`, {
-      method: "PUT",
+  updateCharges: (dealId: string, rentRollId: string, charges: ChargeRow[]) =>
+    rrRequest<{ success: boolean }>(`/deals/${dealId}/rent-roll/${rentRollId}/charges`, {
+      method: 'PUT',
       body: JSON.stringify({ charges }),
     }),
 
   /** Save renovations */
-  updateRenovations: (rentRollId: string, renovations: { floor_plan_code: string; renovation_description: string }[]) =>
-    rrRequest<{ success: boolean }>(`/${rentRollId}/renovations`, {
-      method: "PUT",
+  updateRenovations: (dealId: string, rentRollId: string, renovations: { floor_plan_code: string; renovation_description: string }[]) =>
+    rrRequest<{ success: boolean }>(`/deals/${dealId}/rent-roll/${rentRollId}/renovations`, {
+      method: 'PUT',
       body: JSON.stringify({ renovations }),
     }),
 
   /** Save affordability */
-  updateAffordability: (rentRollId: string, hasAffordable: boolean, leaseTypes?: { floor_plan_code: string; lease_type: string }[]) =>
-    rrRequest<{ success: boolean }>(`/${rentRollId}/affordability`, {
-      method: "PUT",
+  updateAffordability: (dealId: string, rentRollId: string, hasAffordable: boolean, leaseTypes?: { floor_plan_code: string; lease_type: string }[]) =>
+    rrRequest<{ success: boolean }>(`/deals/${dealId}/rent-roll/${rentRollId}/affordability`, {
+      method: 'PUT',
       body: JSON.stringify({ has_affordable: hasAffordable, lease_types: leaseTypes }),
     }),
 
   /** Finalize rent roll */
-  finalize: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: any }>(`/${rentRollId}/finalize`, { method: "POST" });
+  finalize: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: any }>(`/deals/${dealId}/rent-roll/${rentRollId}/finalize`, { method: 'POST' });
     return res.data;
   },
 
   /** Get dashboard data */
-  getDashboard: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: DashboardData }>(`/${rentRollId}/dashboard`);
+  getDashboard: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: DashboardData }>(`/deals/${dealId}/rent-roll/${rentRollId}/dashboard`);
     return res.data;
   },
 
   /** Get all units */
-  getUnits: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: RentRollUnitRow[] }>(`/${rentRollId}/units`);
+  getUnits: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: RentRollUnitRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/units`);
     return res.data;
   },
 
   /** Get floor plan summary */
-  getFloorPlanSummary: async (rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: FloorPlanSummaryRow[] }>(`/${rentRollId}/floor-plan-summary`);
+  getFloorPlanSummary: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: FloorPlanSummaryRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/floor-plan-summary`);
     return res.data;
   },
 };
