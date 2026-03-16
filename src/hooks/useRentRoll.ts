@@ -19,110 +19,110 @@ export function useUploadRentRoll() {
   });
 }
 
-export function useSaveMapping() {
+export function useSaveMapping(dealId: string) {
   return useMutation({
     mutationFn: (p: { rentRollId: string; mapping: Record<string, string> }) =>
-      rentRollCaptureApi.saveMapping(p.rentRollId, p.mapping),
+      rentRollCaptureApi.saveMapping(dealId, p.rentRollId, p.mapping),
   });
 }
 
-export function useFloorplans(rentRollId: string | undefined) {
+export function useFloorplans(dealId: string, rentRollId: string | undefined) {
   return useQuery({
     queryKey: ["rent-roll-floorplans", rentRollId],
-    queryFn: () => rentRollCaptureApi.getFloorplans(rentRollId!),
+    queryFn: () => rentRollCaptureApi.getFloorplans(dealId, rentRollId!),
     enabled: !!rentRollId,
   });
 }
 
-export function useUpdateFloorplans() {
+export function useUpdateFloorplans(dealId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (p: { rentRollId: string; floorplans: FloorplanRow[] }) =>
-      rentRollCaptureApi.updateFloorplans(p.rentRollId, p.floorplans),
+      rentRollCaptureApi.updateFloorplans(dealId, p.rentRollId, p.floorplans),
     onSuccess: (_, v) => qc.invalidateQueries({ queryKey: ["rent-roll-floorplans", v.rentRollId] }),
   });
 }
 
-export function useOccupancy(rentRollId: string | undefined) {
+export function useOccupancy(dealId: string, rentRollId: string | undefined) {
   return useQuery({
     queryKey: ["rent-roll-occupancy", rentRollId],
-    queryFn: () => rentRollCaptureApi.getOccupancy(rentRollId!),
+    queryFn: () => rentRollCaptureApi.getOccupancy(dealId, rentRollId!),
     enabled: !!rentRollId,
   });
 }
 
-export function useUpdateOccupancy() {
+export function useUpdateOccupancy(dealId: string) {
   return useMutation({
     mutationFn: (p: { rentRollId: string; occupancy: OccupancyRow[] }) =>
-      rentRollCaptureApi.updateOccupancy(p.rentRollId, p.occupancy),
+      rentRollCaptureApi.updateOccupancy(dealId, p.rentRollId, p.occupancy),
   });
 }
 
-export function useCharges(rentRollId: string | undefined) {
+export function useCharges(dealId: string, rentRollId: string | undefined) {
   return useQuery({
     queryKey: ["rent-roll-charges", rentRollId],
-    queryFn: () => rentRollCaptureApi.getCharges(rentRollId!),
+    queryFn: () => rentRollCaptureApi.getCharges(dealId, rentRollId!),
     enabled: !!rentRollId,
   });
 }
 
-export function useUpdateCharges() {
+export function useUpdateCharges(dealId: string) {
   return useMutation({
     mutationFn: (p: { rentRollId: string; charges: ChargeRow[] }) =>
-      rentRollCaptureApi.updateCharges(p.rentRollId, p.charges),
+      rentRollCaptureApi.updateCharges(dealId, p.rentRollId, p.charges),
   });
 }
 
-export function useUpdateRenovations() {
+export function useUpdateRenovations(dealId: string) {
   return useMutation({
     mutationFn: (p: { rentRollId: string; renovations: { floor_plan_code: string; renovation_description: string }[] }) =>
-      rentRollCaptureApi.updateRenovations(p.rentRollId, p.renovations),
+      rentRollCaptureApi.updateRenovations(dealId, p.rentRollId, p.renovations),
   });
 }
 
-export function useUpdateAffordability() {
+export function useUpdateAffordability(dealId: string) {
   return useMutation({
     mutationFn: (p: { rentRollId: string; hasAffordable: boolean; leaseTypes?: { floor_plan_code: string; lease_type: string }[] }) =>
-      rentRollCaptureApi.updateAffordability(p.rentRollId, p.hasAffordable, p.leaseTypes),
+      rentRollCaptureApi.updateAffordability(dealId, p.rentRollId, p.hasAffordable, p.leaseTypes),
   });
 }
 
-export function useFinalizeRentRoll() {
+export function useFinalizeRentRoll(dealId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (rentRollId: string) => rentRollCaptureApi.finalize(rentRollId),
+    mutationFn: (rentRollId: string) => rentRollCaptureApi.finalize(dealId, rentRollId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["rent-rolls"] }),
   });
 }
 
-export function useDeleteRentRoll() {
+export function useDeleteRentRoll(dealId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (rentRollId: string) => rentRollCaptureApi.delete(rentRollId),
+    mutationFn: (rentRollId: string) => rentRollCaptureApi.delete(dealId, rentRollId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["rent-rolls"] }),
   });
 }
 
-export function useRentRollDashboard(rentRollId: string | undefined) {
+export function useRentRollDashboard(dealId: string, rentRollId: string | undefined) {
   return useQuery({
     queryKey: ["rent-roll-dashboard", rentRollId],
-    queryFn: () => rentRollCaptureApi.getDashboard(rentRollId!),
+    queryFn: () => rentRollCaptureApi.getDashboard(dealId, rentRollId!),
     enabled: !!rentRollId,
   });
 }
 
-export function useRentRollUnitsDetailed(rentRollId: string | undefined) {
+export function useRentRollUnitsDetailed(dealId: string, rentRollId: string | undefined) {
   return useQuery({
     queryKey: ["rent-roll-units-detailed", rentRollId],
-    queryFn: () => rentRollCaptureApi.getUnits(rentRollId!),
+    queryFn: () => rentRollCaptureApi.getUnits(dealId, rentRollId!),
     enabled: !!rentRollId,
   });
 }
 
-export function useFloorPlanSummary(rentRollId: string | undefined) {
+export function useFloorPlanSummary(dealId: string, rentRollId: string | undefined) {
   return useQuery({
     queryKey: ["rent-roll-fp-summary", rentRollId],
-    queryFn: () => rentRollCaptureApi.getFloorPlanSummary(rentRollId!),
+    queryFn: () => rentRollCaptureApi.getFloorPlanSummary(dealId, rentRollId!),
     enabled: !!rentRollId,
   });
 }
