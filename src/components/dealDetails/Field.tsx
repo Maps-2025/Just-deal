@@ -1,6 +1,6 @@
 interface FieldProps {
   label: string;
-  value: string | number | null | undefined;
+  value?: string | number | null | undefined;
 }
 
 export function Field({ label, value }: FieldProps) {
