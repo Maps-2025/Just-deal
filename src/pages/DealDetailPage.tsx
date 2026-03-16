@@ -57,6 +57,8 @@ export default function DealDetailPage() {
     { id: "comps", label: "Sales Comps" },
   ];
 
+  const isRentRollView = activeTab.startsWith("rent-roll");
+
   return (
     <AppLayout>
       <div className="flex-1 flex flex-col min-w-0" id="page-top">
@@ -84,14 +86,11 @@ export default function DealDetailPage() {
             <div className="flex-1 overflow-auto">
               {overviewSection === "summary" && (
                 <div className="p-6">
-                  {/* Top row: Summary + Info + Actions */}
                   <div className="grid grid-cols-[1fr_280px_280px] gap-4 mb-6">
                     <DealSummaryCard deal={deal} />
                     <DealInfoCard deal={deal} />
                     <DealActionsCard />
                   </div>
-
-                  {/* Full summary sections */}
                   <div className="space-y-6">
                     <LocationCard deal={deal} />
                     <CharacteristicsCard deal={deal} />
@@ -115,13 +114,17 @@ export default function DealDetailPage() {
           </div>
         )}
 
-        {activeTab === "rent-roll" && dealId && (
-          <div className="flex-1 flex flex-col overflow-auto">
-            <RentRollModule dealId={dealId} />
+        {isRentRollView && dealId && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <RentRollModule
+              dealId={dealId}
+              subView={activeTab}
+              onNavigate={setActiveTab}
+            />
           </div>
         )}
 
-        {activeTab !== "overview" && activeTab !== "rent-roll" && (
+        {!isRentRollView && activeTab !== "overview" && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-muted-foreground text-sm">
               {activeTab === "operating-statement" && "Operating Statement — coming soon."}

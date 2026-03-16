@@ -1,28 +1,34 @@
 import { useState } from "react";
-import { Upload, Download, Trash2, AlertTriangle, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Upload, Download, Trash2, Pencil } from "lucide-react";
 import { useRentRollList, useDeleteRentRoll } from "@/hooks/useRentRoll";
 import { UploadRentRollModal } from "./UploadRentRollModal";
 import { SourceMappingModal } from "./SourceMappingModal";
 import { RentRollWizard } from "./RentRollWizard";
 import { CaptureComplete } from "./CaptureComplete";
 import { RentRollDashboard } from "./dashboard/RentRollDashboard";
+import { FloorPlanSummaryTab } from "./dashboard/FloorPlanSummaryTab";
+import { RentRollTableTab } from "./dashboard/RentRollTableTab";
+import { ManageRentRollsTab } from "./dashboard/ManageRentRollsTab";
 import { toast } from "sonner";
 
-type Phase = "list" | "upload" | "mapping" | "wizard" | "complete" | "dashboard";
+type Phase = "list" | "upload" | "mapping" | "wizard" | "complete";
 
 interface RentRollModuleProps {
   dealId: string;
+  /** Which sub-view to show: dashboard, floorplan, table, comps, manage, or list */
+  subView?: string;
+  onNavigate?: (view: string) => void;
 }
 
-export function RentRollModule({ dealId }: RentRollModuleProps) {
+export function RentRollModule({ dealId, subView = "list", onNavigate }: RentRollModuleProps) {
   const [phase, setPhase] = useState<Phase>("list");
   const [rentRollId, setRentRollId] = useState<string | null>(null);
   const [uploadHeaders, setUploadHeaders] = useState<string[]>([]);
-  const [activeRentRollId, setActiveRentRollId] = useState<string | null>(null);
 
   const { data: rentRolls = [], isLoading } = useRentRollList(dealId);
   const deleteRR = useDeleteRentRoll(dealId);
+
+  const latestRRId = rentRolls.length > 0 ? rentRolls[0].id : null;
 
   const handleUploadComplete = (rrId: string, headers: string[]) => {
     setRentRollId(rrId);
@@ -33,11 +39,6 @@ export function RentRollModule({ dealId }: RentRollModuleProps) {
   const handleMappingComplete = () => setPhase("wizard");
   const handleWizardComplete = () => setPhase("complete");
 
-  const handleViewDashboard = (rrId?: string) => {
-    setActiveRentRollId(rrId || rentRollId);
-    setPhase("dashboard");
-  };
-
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this rent roll?")) return;
     try { await deleteRR.mutateAsync(id); toast.success("Rent roll deleted"); }
@@ -46,7 +47,28 @@ export function RentRollModule({ dealId }: RentRollModuleProps) {
 
   const handleAddAnother = () => { setRentRollId(null); setUploadHeaders([]); setPhase("upload"); };
 
-  // Modals render as overlays
+  // Sub-view routing for dashboard tabs
+  if (subView === "rent-roll-dashboard" && latestRRId) {
+    return <RentRollDashboard dealId={dealId} rentRollId={latestRRId} onNavigate={onNavigate} />;
+  }
+  if (subView === "rent-roll-floorplan" && latestRRId) {
+    return <div className="p-6"><FloorPlanSummaryTab dealId={dealId} rentRollId={latestRRId} /></div>;
+  }
+  if (subView === "rent-roll-table" && latestRRId) {
+    return <div className="p-6"><RentRollTableTab dealId={dealId} rentRollId={latestRRId} /></div>;
+  }
+  if (subView === "rent-roll-manage") {
+    return <div className="p-6"><ManageRentRollsTab rentRollId={latestRRId || ""} /></div>;
+  }
+  if (subView === "rent-roll-comps") {
+    return (
+      <div className="flex-1 flex items-center justify-center py-20">
+        <p className="text-sm text-muted-foreground">Rent Roll Comps — coming soon.</p>
+      </div>
+    );
+  }
+
+  // Default: list view
   return (
     <>
       <div className="p-6">
@@ -83,7 +105,7 @@ export function RentRollModule({ dealId }: RentRollModuleProps) {
                   <div className="flex items-center gap-3">
                     <button
                       className="text-sm text-primary hover:underline flex items-center gap-1"
-                      onClick={() => handleViewDashboard(rr.id)}
+                      onClick={() => onNavigate?.("rent-roll-dashboard")}
                     >
                       View
                     </button>
@@ -118,10 +140,7 @@ export function RentRollModule({ dealId }: RentRollModuleProps) {
         <RentRollWizard dealId={dealId} rentRollId={rentRollId} onComplete={handleWizardComplete} onCancel={() => setPhase("list")} />
       )}
       {phase === "complete" && rentRollId && (
-        <CaptureComplete rentRollId={rentRollId} onViewDashboard={() => handleViewDashboard()} onViewRentRoll={() => handleViewDashboard()} onEditRentRoll={() => setPhase("wizard")} onAddAnother={handleAddAnother} onClose={() => setPhase("list")} />
-      )}
-      {phase === "dashboard" && activeRentRollId && (
-        <RentRollDashboard dealId={dealId} rentRollId={activeRentRollId} onBack={() => setPhase("list")} />
+        <CaptureComplete rentRollId={rentRollId} onViewDashboard={() => onNavigate?.("rent-roll-dashboard")} onViewRentRoll={() => onNavigate?.("rent-roll-table")} onEditRentRoll={() => setPhase("wizard")} onAddAnother={handleAddAnother} onClose={() => setPhase("list")} />
       )}
     </>
   );
