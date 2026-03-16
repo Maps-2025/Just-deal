@@ -7,6 +7,7 @@ import { useSaveMapping } from "@/hooks/useRentRoll";
 import { toast } from "sonner";
 
 interface SourceMappingModalProps {
+  dealId: string;
   rentRollId: string;
   headers: string[];
   onComplete: () => void;
@@ -34,9 +35,8 @@ const FIELDS = [
   { key: "net_effective_rent", label: "Net Effective Rent", required: false },
 ];
 
-export function SourceMappingModal({ rentRollId, headers, onComplete, onCancel }: SourceMappingModalProps) {
+export function SourceMappingModal({ dealId, rentRollId, headers, onComplete, onCancel }: SourceMappingModalProps) {
   const [mapping, setMapping] = useState<Record<string, string>>(() => {
-    // Auto-detect mappings
     const m: Record<string, string> = {};
     for (const field of FIELDS) {
       const match = headers.find((h) => {
@@ -49,7 +49,7 @@ export function SourceMappingModal({ rentRollId, headers, onComplete, onCancel }
     return m;
   });
 
-  const saveMapping = useSaveMapping();
+  const saveMapping = useSaveMapping(dealId);
 
   const handleSubmit = async () => {
     const missingRequired = FIELDS.filter((f) => f.required && !mapping[f.key]);
@@ -69,44 +69,24 @@ export function SourceMappingModal({ rentRollId, headers, onComplete, onCancel }
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}><ArrowLeft className="h-4 w-4" /></Button>
         <h2 className="text-xl font-semibold">Source Data Mapping</h2>
       </div>
-
-      <p className="text-sm text-muted-foreground mb-6">
-        Map the columns from your uploaded file to the required fields. Required fields are marked with *.
-      </p>
-
+      <p className="text-sm text-muted-foreground mb-6">Map the columns from your uploaded file to the required fields. Required fields are marked with *.</p>
       <div className="grid grid-cols-2 gap-4">
         {FIELDS.map((field) => (
           <div key={field.key}>
-            <Label className="text-sm">
-              {field.label} {field.required && <span className="text-destructive">*</span>}
-            </Label>
-            <Select
-              value={mapping[field.key] || ""}
-              onValueChange={(v) => setMapping((prev) => ({ ...prev, [field.key]: v }))}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select column…" />
-              </SelectTrigger>
-              <SelectContent>
-                {headers.map((h) => (
-                  <SelectItem key={h} value={h}>{h}</SelectItem>
-                ))}
-              </SelectContent>
+            <Label className="text-sm">{field.label} {field.required && <span className="text-destructive">*</span>}</Label>
+            <Select value={mapping[field.key] || ""} onValueChange={(v) => setMapping((prev) => ({ ...prev, [field.key]: v }))}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Select column…" /></SelectTrigger>
+              <SelectContent>{headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         ))}
       </div>
-
       <div className="flex justify-end gap-2 mt-8">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button onClick={handleSubmit} disabled={saveMapping.isPending}>
-          {saveMapping.isPending ? "Saving…" : "Next"}
-        </Button>
+        <Button onClick={handleSubmit} disabled={saveMapping.isPending}>{saveMapping.isPending ? "Saving…" : "Next"}</Button>
       </div>
     </div>
   );
