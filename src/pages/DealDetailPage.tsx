@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { DealHeader } from "@/components/dealDetails/DealHeader";
 import { DealTabs } from "@/components/dealDetails/DealTabs";
@@ -8,12 +8,21 @@ import { DealInfoCard } from "@/components/dealDetails/DealInfoCard";
 import { DealActionsCard } from "@/components/dealDetails/DealActionsCard";
 import { DealDetailsForm } from "@/components/dealDetails/DealDetailsForm";
 import { RentRollViewer } from "@/components/dealDetails/RentRollViewer";
+import { LocationCard } from "@/components/dealDetails/LocationCard";
+import { CharacteristicsCard } from "@/components/dealDetails/CharacteristicsCard";
+import { AmenitiesCard } from "@/components/dealDetails/AmenitiesCard";
+import { ValuationCard } from "@/components/dealDetails/ValuationCard";
+import { TransactionInfoCard } from "@/components/dealDetails/TransactionInfoCard";
+import { PreviousSaleCard } from "@/components/dealDetails/PreviousSaleCard";
+import { CommentsCard } from "@/components/dealDetails/CommentsCard";
 import { useDeal, useRentRollUnits } from "@/hooks/useDeals";
 
 export default function DealDetailPage() {
   const { dealId } = useParams<{ dealId: string }>();
+  const [searchParams] = useSearchParams();
+  const defaultSection = searchParams.get("section") || "summary";
   const [activeTab, setActiveTab] = useState("overview");
-  const [overviewSection, setOverviewSection] = useState("summary");
+  const [overviewSection, setOverviewSection] = useState(defaultSection);
 
   const { data: deal, isLoading } = useDeal(dealId);
   const { data: rentRollUnits = [] } = useRentRollUnits(dealId);
@@ -51,7 +60,7 @@ export default function DealDetailPage() {
 
   return (
     <AppLayout>
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0" id="page-top">
         <DealHeader deal={deal} />
         <DealTabs active={activeTab} onSelect={setActiveTab} />
 
@@ -75,10 +84,24 @@ export default function DealDetailPage() {
 
             <div className="flex-1 overflow-auto">
               {overviewSection === "summary" && (
-                <div className="p-6 grid grid-cols-[1fr_280px_280px] gap-4">
-                  <DealSummaryCard deal={deal} />
-                  <DealInfoCard deal={deal} />
-                  <DealActionsCard />
+                <div className="p-6">
+                  {/* Top row: Summary + Info + Actions */}
+                  <div className="grid grid-cols-[1fr_280px_280px] gap-4 mb-6">
+                    <DealSummaryCard deal={deal} />
+                    <DealInfoCard deal={deal} />
+                    <DealActionsCard />
+                  </div>
+
+                  {/* Full summary sections */}
+                  <div className="space-y-6">
+                    <LocationCard deal={deal} />
+                    <CharacteristicsCard deal={deal} />
+                    <AmenitiesCard deal={deal} />
+                    <ValuationCard />
+                    <TransactionInfoCard deal={deal} />
+                    <PreviousSaleCard />
+                    <CommentsCard deal={deal} />
+                  </div>
                 </div>
               )}
               {overviewSection === "details" && (

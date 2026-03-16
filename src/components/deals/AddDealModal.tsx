@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,6 @@ interface AddDealModalProps {
   onClose: () => void;
 }
 
-// Default org for Phase 1 — will come from auth context in Phase 2
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
 export function AddDealModal({ open, onClose }: AddDealModalProps) {
@@ -22,6 +22,7 @@ export function AddDealModal({ open, onClose }: AddDealModalProps) {
   const [market, setMarket]       = useState("");
   const [assetType, setAssetType] = useState("Multifamily");
   const createDeal = useCreateDeal();
+  const navigate = useNavigate();
 
   if (!open) return null;
 
@@ -31,7 +32,7 @@ export function AddDealModal({ open, onClose }: AddDealModalProps) {
       return;
     }
     try {
-      await createDeal.mutateAsync({
+      const deal = await createDeal.mutateAsync({
         deal_name:       name.trim(),
         deal_id:         String(Math.floor(Math.random() * 90000) + 10000),
         asset_type:      assetType,
@@ -45,6 +46,8 @@ export function AddDealModal({ open, onClose }: AddDealModalProps) {
       toast.success("Deal created successfully");
       setName(""); setAddress(""); setCity(""); setState(""); setMarket("");
       onClose();
+      // Redirect to deal details page with details tab active
+      navigate(`/deals/${deal.id}?section=details`);
     } catch (e: unknown) {
       toast.error((e as Error).message || "Failed to create deal");
     }
