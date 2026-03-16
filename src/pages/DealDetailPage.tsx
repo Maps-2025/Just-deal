@@ -25,7 +25,6 @@ export default function DealDetailPage() {
   const [overviewSection, setOverviewSection] = useState(defaultSection);
 
   const { data: deal, isLoading } = useDeal(dealId);
-  const { data: rentRollUnits = [] } = useRentRollUnits(dealId);
 
   if (isLoading) {
     return (
