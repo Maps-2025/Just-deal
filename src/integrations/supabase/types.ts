@@ -348,6 +348,7 @@ export type Database = {
           occupancy_status: string | null
           recurring_concessions: number | null
           renovation_status: string | null
+          rent_escalations: Json
           rent_roll_id: string
           tenant_name: string | null
           unit_no: string | null
@@ -371,6 +372,7 @@ export type Database = {
           occupancy_status?: string | null
           recurring_concessions?: number | null
           renovation_status?: string | null
+          rent_escalations?: Json
           rent_roll_id: string
           tenant_name?: string | null
           unit_no?: string | null
@@ -394,6 +396,7 @@ export type Database = {
           occupancy_status?: string | null
           recurring_concessions?: number | null
           renovation_status?: string | null
+          rent_escalations?: Json
           rent_roll_id?: string
           tenant_name?: string | null
           unit_no?: string | null
@@ -411,33 +414,42 @@ export type Database = {
       }
       rent_rolls: {
         Row: {
+          column_mapping: Json | null
           deal_pk: string
           has_anomalies: boolean
           id: string
           occupancy_pct: number | null
           occupied_units: number | null
+          processing_status: string
+          raw_data: Json | null
           report_date: string
           total_units: number | null
           uploaded_at: string
           uploaded_by_user_id: string | null
         }
         Insert: {
+          column_mapping?: Json | null
           deal_pk: string
           has_anomalies?: boolean
           id?: string
           occupancy_pct?: number | null
           occupied_units?: number | null
+          processing_status?: string
+          raw_data?: Json | null
           report_date: string
           total_units?: number | null
           uploaded_at?: string
           uploaded_by_user_id?: string | null
         }
         Update: {
+          column_mapping?: Json | null
           deal_pk?: string
           has_anomalies?: boolean
           id?: string
           occupancy_pct?: number | null
           occupied_units?: number | null
+          processing_status?: string
+          raw_data?: Json | null
           report_date?: string
           total_units?: number | null
           uploaded_at?: string
