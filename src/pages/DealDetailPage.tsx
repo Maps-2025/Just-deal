@@ -15,7 +15,7 @@ import { ValuationCard } from "@/components/dealDetails/ValuationCard";
 import { TransactionInfoCard } from "@/components/dealDetails/TransactionInfoCard";
 import { PreviousSaleCard } from "@/components/dealDetails/PreviousSaleCard";
 import { CommentsCard } from "@/components/dealDetails/CommentsCard";
-import { useDeal, useRentRollUnits } from "@/hooks/useDeals";
+import { useDeal } from "@/hooks/useDeals";
 
 export default function DealDetailPage() {
   const { dealId } = useParams<{ dealId: string }>();
