@@ -59,8 +59,8 @@ export function RentRollTableView({ dealId, rentRollId, rentRolls, onNavigate }:
   const cellValue = (u: RentRollUnitRow, col: typeof ALL_COLUMNS[number]) => {
     const v = (u as any)[col.key];
     if (v == null) return "—";
-    if (col.fmt === "dollar") return fmtDollar(v);
-    if (col.fmt === "num") return fmtNum(v);
+    if ("fmt" in col && col.fmt === "dollar") return fmtDollar(v);
+    if ("fmt" in col && col.fmt === "num") return fmtNum(v);
     return String(v);
   };
 
