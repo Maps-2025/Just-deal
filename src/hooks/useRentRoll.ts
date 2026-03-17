@@ -126,3 +126,11 @@ export function useFloorPlanSummary(dealId: string, rentRollId: string | undefin
     enabled: !!rentRollId,
   });
 }
+
+export function useRentRollAnomalies(dealId: string, rentRollId: string | undefined) {
+  return useQuery({
+    queryKey: ["rent-roll-anomalies", rentRollId],
+    queryFn: () => rentRollCaptureApi.getAnomalies(dealId, rentRollId!),
+    enabled: !!rentRollId,
+  });
+}
