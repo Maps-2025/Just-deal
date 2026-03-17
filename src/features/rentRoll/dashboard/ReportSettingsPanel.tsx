@@ -10,6 +10,7 @@ interface ReportSettingsPanelProps {
   onManage: () => void;
   onView: () => void;
   hasAnomalies?: boolean;
+  onAnomaliesClick?: () => void;
   monthlyRentMode?: string;
   onMonthlyRentModeChange?: (v: string) => void;
   inPlaceRentType?: string;
@@ -29,6 +30,7 @@ export function ReportSettingsPanel({
   onManage,
   onView,
   hasAnomalies,
+  onAnomaliesClick,
   monthlyRentMode = "per_unit",
   onMonthlyRentModeChange,
   inPlaceRentType = "contractual",
@@ -79,7 +81,10 @@ export function ReportSettingsPanel({
 
         {/* Anomalies */}
         {hasAnomalies && (
-          <button className="text-[hsl(var(--primary))] text-sm hover:underline flex items-center gap-1 font-medium">
+          <button
+            onClick={onAnomaliesClick}
+            className="text-[hsl(var(--primary))] text-sm hover:underline flex items-center gap-1 font-medium"
+          >
             Anomalies Detected <AlertCircle className="h-3.5 w-3.5" />
           </button>
         )}

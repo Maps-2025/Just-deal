@@ -76,12 +76,86 @@ export interface RentRollRecord {
   processing_status: string;
 }
 
+export interface ChartDataPoint {
+  name: string;
+  value: number;
+}
+
+export interface MonthlyRentRow {
+  floor_plan: string;
+  in_place: number;
+  market: number;
+  in_place_total: number;
+  market_total: number;
+  in_place_psf: number;
+  market_psf: number;
+  units: number;
+}
+
+export interface LeaseExpiryRow {
+  month: string;
+  count: number;
+  pct_units: number;
+  pct_rent: number;
+  bedrooms?: number;
+  floor_plan?: string;
+}
+
+export interface AnomalyRecord {
+  unit_id: string;
+  unit_no: string;
+  anomaly_type: string;
+  message: string;
+  severity: string;
+}
+
+export interface RentRollSettings {
+  hasLeaseTypes: boolean;
+  hasRenovations: boolean;
+  hasLeaseDates: boolean;
+  hasLeaseSignDate: boolean;
+  hasMoveInDate: boolean;
+  hasBeds: boolean;
+  hasBaths: boolean;
+  hasNetSf: boolean;
+  rentTypes: string[];
+  renovationStatuses: string[];
+}
+
 export interface DashboardData {
-  unit_types: { name: string; value: number }[];
-  lease_types: { name: string; value: number }[];
-  renovation_status: { name: string; value: number }[];
+  // Donut charts
+  unit_types: ChartDataPoint[];
+  lease_types: ChartDataPoint[];
+  renovation_status: ChartDataPoint[];
+  // Counts
   total_units: number;
   occupied: number;
+  vacant: number;
+  occupancy_pct: number;
+  // KPI metrics
+  avg_market_rent: number;
+  avg_in_place_rent: number;
+  total_monthly_rent: number;
+  total_market_rent: number;
+  loss_to_lease: number;
+  loss_to_lease_pct: number;
+  vacancy_loss: number;
+  // Monthly rent by floor plan
+  monthly_rent: MonthlyRentRow[];
+  // Lease expiration
+  lease_expiration: LeaseExpiryRow[];
+  // Loss to lease by floor plan
+  loss_to_lease_by_fp: { name: string; loss: number }[];
+  // Renovation premium
+  renovation_premium: { status: string; avg_rent: number }[];
+  // In-place rent by renovation status
+  rent_by_renovation: { status: string; rent: number }[];
+  // Occupancy by unit type
+  occupancy_by_type: { name: string; occupied: number; vacant: number }[];
+  // Leasing trends (if lease sign dates available)
+  leasing_trends: { month: string; leases: number }[];
+  // Feature flags / settings
+  settings: RentRollSettings;
 }
 
 export interface FloorPlanSummaryRow {
@@ -210,7 +284,7 @@ export const rentRollCaptureApi = {
     return res.data;
   },
 
-  /** Get dashboard data */
+  /** Get dashboard data (all analytics in one call) */
   getDashboard: async (dealId: string, rentRollId: string) => {
     const res = await rrRequest<{ success: boolean; data: DashboardData }>(`/deals/${dealId}/rent-roll/${rentRollId}/dashboard`);
     return res.data;
@@ -225,6 +299,31 @@ export const rentRollCaptureApi = {
   /** Get floor plan summary */
   getFloorPlanSummary: async (dealId: string, rentRollId: string) => {
     const res = await rrRequest<{ success: boolean; data: FloorPlanSummaryRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/floor-plan-summary`);
+    return res.data;
+  },
+
+  /** Get anomalies list */
+  getAnomalies: async (dealId: string, rentRollId: string) => {
+    const res = await rrRequest<{ success: boolean; data: AnomalyRecord[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/anomalies`);
+    return res.data;
+  },
+
+  /** Resolve anomaly */
+  resolveAnomaly: (dealId: string, rentRollId: string, anomalyId: string) =>
+    rrRequest<{ success: boolean }>(`/deals/${dealId}/rent-roll/${rentRollId}/anomalies/${anomalyId}/resolve`, { method: 'POST' }),
+
+  /** Export rent roll to Excel */
+  exportExcel: async (dealId: string, rentRollId: string) => {
+    const token = getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(`${BASE_URL}/deals/${dealId}/rent-roll/${rentRollId}/export`, { headers });
+    if (!res.ok) throw new Error('Export failed');
+    return res.blob();
+  },
+
+  /** Get historical comparison */
+  getHistoricals: async (dealId: string) => {
+    const res = await rrRequest<{ success: boolean; data: { rent_roll_count: number; latest_date: string } }>(`/deals/${dealId}/rent-roll/historicals`);
     return res.data;
   },
 };
