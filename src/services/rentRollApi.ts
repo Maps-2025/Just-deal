@@ -158,8 +158,18 @@ export interface DashboardData {
   settings: RentRollSettings;
 }
 
+export type ReportTypeView = "floorplan" | "unitmix" | "unitsize" | "floorplancode";
+
+export const REPORT_TYPE_API_MAP: Record<ReportTypeView, string> = {
+  floorplan: "floorplanname",
+  unitmix: "unitmix",
+  unitsize: "unitsize",
+  floorplancode: "floorplancode",
+};
+
 export interface FloorPlanSummaryRow {
   floor_plan: string;
+  floor_plan_code?: string;
   bedrooms: number | null;
   bathrooms: number | null;
   units: number;
@@ -303,9 +313,11 @@ export const rentRollCaptureApi = {
     return res.data;
   },
 
-  /** Get floor plan summary */
-  getFloorPlanSummary: async (dealId: string, rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: FloorPlanSummaryRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/floor-plan-summary`);
+  /** Get floor plan summary with report type */
+  getFloorPlanSummary: async (dealId: string, rentRollId: string, unitMixType: string = "floorplanname") => {
+    const res = await rrRequest<{ success: boolean; data: FloorPlanSummaryRow[] }>(
+      `/deals/${dealId}/rent-roll/${rentRollId}/floor-plan-summary?unitMixType=${encodeURIComponent(unitMixType)}`
+    );
     return res.data;
   },
 
