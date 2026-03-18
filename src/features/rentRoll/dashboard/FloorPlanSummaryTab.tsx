@@ -3,9 +3,11 @@ import { useFloorPlanSummary, useRentRollList } from "@/hooks/useRentRoll";
 import { FloorPlanSettingsPanel } from "./FloorPlanSettingsPanel";
 import { FloorPlanRentTable } from "./FloorPlanRentTable";
 import { FloorPlanUnitTable } from "./FloorPlanUnitTable";
+import { FloorPlanCharts } from "./FloorPlanCharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, FileSpreadsheet } from "lucide-react";
-import type { FloorPlanSummaryRow } from "@/services/rentRollApi";
+import { REPORT_TYPE_API_MAP } from "@/services/rentRollApi";
+import type { FloorPlanSummaryRow, ReportTypeView } from "@/services/rentRollApi";
 
 interface FloorPlanSummaryTabProps {
   dealId: string;
@@ -15,22 +17,21 @@ interface FloorPlanSummaryTabProps {
 
 export function FloorPlanSummaryTab({ dealId, rentRollId, onNavigate }: FloorPlanSummaryTabProps) {
   const [selectedRRId, setSelectedRRId] = useState(rentRollId);
-  const [reportType, setReportType] = useState("floorplan"); // floorplan | unitmix | unitsize | fpcode
-  const [monthlyRentMode, setMonthlyRentMode] = useState<"0" | "1" | "2">("1"); // 0=total, 1=per unit, 2=per sf
+  const [reportType, setReportType] = useState<ReportTypeView>("floorplan");
+  const [monthlyRentMode, setMonthlyRentMode] = useState<"0" | "1" | "2">("1");
   const [inPlaceRentType, setInPlaceRentType] = useState("contractual");
   const [includeSupplemental, setIncludeSupplemental] = useState(false);
 
+  const unitMixType = REPORT_TYPE_API_MAP[reportType];
   const { data: rentRolls = [] } = useRentRollList(dealId);
-  const { data: rawSummary = [], isLoading } = useFloorPlanSummary(dealId, selectedRRId);
+  const { data: rawSummary = [], isLoading } = useFloorPlanSummary(dealId, selectedRRId, unitMixType);
 
-  // Separate data rows from total row
   const { dataRows, totalRow } = useMemo(() => {
     const total = rawSummary.find((r) => r.floor_plan === "Total / Average");
     const rows = rawSummary.filter((r) => r.floor_plan !== "Total / Average");
     return { dataRows: rows, totalRow: total || null };
   }, [rawSummary]);
 
-  // Compute totals from data if no total row from API
   const computedTotals = useMemo(() => {
     if (totalRow) return totalRow;
     if (!dataRows.length) return null;
@@ -65,7 +66,6 @@ export function FloorPlanSummaryTab({ dealId, rentRollId, onNavigate }: FloorPla
   }, [dataRows, totalRow]);
 
   const handleExportExcel = useCallback(() => {
-    // Placeholder for Excel export
     const csvRows: string[] = [];
     csvRows.push("Floor Plan,Market Rent,Occupied Market Rent,In-Place Rent,% of Market Rent");
     dataRows.forEach((r) => {
@@ -95,7 +95,7 @@ export function FloorPlanSummaryTab({ dealId, rentRollId, onNavigate }: FloorPla
         onView={() => onNavigate?.("rent-roll-table")}
         hasAnomalies={rentRolls.find((r) => r.id === selectedRRId)?.has_anomalies}
         reportType={reportType}
-        onReportTypeChange={setReportType}
+        onReportTypeChange={(v) => setReportType(v as ReportTypeView)}
         monthlyRentMode={monthlyRentMode}
         onMonthlyRentModeChange={(v) => setMonthlyRentMode(v as "0" | "1" | "2")}
         inPlaceRentType={inPlaceRentType}
@@ -140,12 +140,21 @@ export function FloorPlanSummaryTab({ dealId, rentRollId, onNavigate }: FloorPla
                 data={dataRows}
                 totals={computedTotals}
                 monthlyRentMode={monthlyRentMode}
+                reportType={reportType}
               />
 
               {/* Table 2: Unit Information & Occupancy */}
               <FloorPlanUnitTable
                 data={dataRows}
                 totals={computedTotals}
+                reportType={reportType}
+              />
+
+              {/* Charts */}
+              <FloorPlanCharts
+                data={dataRows}
+                reportType={reportType}
+                monthlyRentMode={monthlyRentMode}
               />
             </div>
           )}

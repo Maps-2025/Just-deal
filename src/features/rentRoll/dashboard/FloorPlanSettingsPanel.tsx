@@ -91,7 +91,7 @@ export function FloorPlanSettingsPanel({
               <option value="floorplan">Floor Plan</option>
               <option value="unitmix">Unit Mix</option>
               <option value="unitsize">Unit Size</option>
-              <option value="fpcode">Floor Plan Code</option>
+              <option value="floorplancode">Floor Plan Code</option>
             </select>
           </Field>
 
