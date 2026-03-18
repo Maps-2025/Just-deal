@@ -313,9 +313,11 @@ export const rentRollCaptureApi = {
     return res.data;
   },
 
-  /** Get floor plan summary */
-  getFloorPlanSummary: async (dealId: string, rentRollId: string) => {
-    const res = await rrRequest<{ success: boolean; data: FloorPlanSummaryRow[] }>(`/deals/${dealId}/rent-roll/${rentRollId}/floor-plan-summary`);
+  /** Get floor plan summary with report type */
+  getFloorPlanSummary: async (dealId: string, rentRollId: string, unitMixType: string = "floorplanname") => {
+    const res = await rrRequest<{ success: boolean; data: FloorPlanSummaryRow[] }>(
+      `/deals/${dealId}/rent-roll/${rentRollId}/floor-plan-summary?unitMixType=${encodeURIComponent(unitMixType)}`
+    );
     return res.data;
   },
 
