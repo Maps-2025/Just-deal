@@ -165,10 +165,17 @@ export interface FloorPlanSummaryRow {
   units: number;
   occupied: number;
   vacant: number;
+  non_rev: number;
   occupancy_pct: number;
   avg_sqft: number;
   avg_market_rent: number;
   avg_contract_rent: number;
+  occupied_market_rent: number;
+  in_place_rent: number;
+  market_rent_total: number;
+  in_place_rent_total: number;
+  market_rent_psf: number;
+  in_place_rent_psf: number;
 }
 
 export interface RentRollUnitRow {
