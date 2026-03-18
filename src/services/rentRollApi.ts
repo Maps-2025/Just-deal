@@ -158,8 +158,18 @@ export interface DashboardData {
   settings: RentRollSettings;
 }
 
+export type ReportTypeView = "floorplan" | "unitmix" | "unitsize" | "floorplancode";
+
+export const REPORT_TYPE_API_MAP: Record<ReportTypeView, string> = {
+  floorplan: "floorplanname",
+  unitmix: "unitmix",
+  unitsize: "unitsize",
+  floorplancode: "floorplancode",
+};
+
 export interface FloorPlanSummaryRow {
   floor_plan: string;
+  floor_plan_code?: string;
   bedrooms: number | null;
   bathrooms: number | null;
   units: number;
