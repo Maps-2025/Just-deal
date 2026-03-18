@@ -60,7 +60,7 @@ export function RentRollModule({ dealId, subView = "list", onNavigate }: RentRol
     return <RentRollDashboard dealId={dealId} rentRollId={latestRRId} onNavigate={onNavigate} />;
   }
   if (subView === "rent-roll-floorplan" && latestRRId) {
-    return <div className="p-6"><FloorPlanSummaryTab dealId={dealId} rentRollId={latestRRId} /></div>;
+    return <FloorPlanSummaryTab dealId={dealId} rentRollId={latestRRId} onNavigate={onNavigate} />;
   }
   if (subView === "rent-roll-table" && latestRRId) {
     return <RentRollTableView dealId={dealId} rentRollId={latestRRId} rentRolls={rentRolls} onNavigate={onNavigate} />;
