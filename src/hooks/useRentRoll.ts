@@ -119,10 +119,10 @@ export function useRentRollUnitsDetailed(dealId: string, rentRollId: string | un
   });
 }
 
-export function useFloorPlanSummary(dealId: string, rentRollId: string | undefined) {
+export function useFloorPlanSummary(dealId: string, rentRollId: string | undefined, unitMixType: string = "floorplanname") {
   return useQuery({
-    queryKey: ["rent-roll-fp-summary", rentRollId],
-    queryFn: () => rentRollCaptureApi.getFloorPlanSummary(dealId, rentRollId!),
+    queryKey: ["rent-roll-fp-summary", rentRollId, unitMixType],
+    queryFn: () => rentRollCaptureApi.getFloorPlanSummary(dealId, rentRollId!, unitMixType),
     enabled: !!rentRollId,
   });
 }
