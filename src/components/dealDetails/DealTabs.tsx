@@ -56,7 +56,7 @@ export function DealTabs({ active, onSelect }: DealTabsProps) {
   const isOsActive = active.startsWith("os-");
 
   return (
-    <div className="border-b px-6">
+    <div className="border-b px-6" ref={containerRef}>
       <nav className="flex gap-0 -mb-px">
         {tabs.map((tab) => {
           const isActive = tab.subItems
