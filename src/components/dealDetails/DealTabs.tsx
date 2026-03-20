@@ -15,7 +15,20 @@ const tabs = [
       { id: "rent-roll-manage", label: "Manage Rent Rolls" },
     ],
   },
-  { id: "operating-statement", label: "Operating Statement" },
+  {
+    id: "operating-statement",
+    label: "Operating Statement",
+    subItems: [
+      { id: "os-summary", label: "Summary" },
+      { id: "os-cash-flows", label: "Cash Flows" },
+      { id: "os-revenue", label: "Revenue Analysis" },
+      { id: "os-adjustments", label: "Adjustments" },
+      { id: "os-comps", label: "Operating Statement Comps" },
+      { id: "os-market-comp", label: "Market Comp Data (Beta)" },
+      { id: "os-source-data", label: "Source Data" },
+      { id: "os-manage", label: "Manage Operating Statement" },
+    ],
+  },
   { id: "firstpass", label: "FirstPass" },
   { id: "sharing", label: "Sharing" },
 ];
@@ -27,11 +40,11 @@ interface DealTabsProps {
 
 export function DealTabs({ active, onSelect }: DealTabsProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpenDropdown(null);
       }
     };
@@ -40,17 +53,18 @@ export function DealTabs({ active, onSelect }: DealTabsProps) {
   }, []);
 
   const isRentRollActive = active.startsWith("rent-roll");
+  const isOsActive = active.startsWith("os-");
 
   return (
-    <div className="border-b px-6">
+    <div className="border-b px-6" ref={containerRef}>
       <nav className="flex gap-0 -mb-px">
         {tabs.map((tab) => {
           const isActive = tab.subItems
-            ? isRentRollActive
+            ? (tab.id === "rent-roll" ? isRentRollActive : tab.id === "operating-statement" ? isOsActive : false)
             : active === tab.id;
 
           return (
-            <div key={tab.id} className="relative" ref={tab.subItems ? dropdownRef : undefined}>
+            <div key={tab.id} className="relative">
               <button
                 onClick={() => {
                   if (tab.subItems) {

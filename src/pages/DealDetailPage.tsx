@@ -8,6 +8,7 @@ import { DealInfoCard } from "@/components/dealDetails/DealInfoCard";
 import { DealActionsCard } from "@/components/dealDetails/DealActionsCard";
 import { DealDetailsForm } from "@/components/dealDetails/DealDetailsForm";
 import { RentRollModule } from "@/features/rentRoll/RentRollModule";
+import { OperatingStatementModule } from "@/features/operatingStatement/OperatingStatementModule";
 import { LocationCard } from "@/components/dealDetails/LocationCard";
 import { CharacteristicsCard } from "@/components/dealDetails/CharacteristicsCard";
 import { AmenitiesCard } from "@/components/dealDetails/AmenitiesCard";
@@ -58,6 +59,7 @@ export default function DealDetailPage() {
   ];
 
   const isRentRollView = activeTab.startsWith("rent-roll");
+  const isOsView = activeTab.startsWith("os-");
 
   return (
     <AppLayout>
@@ -124,10 +126,19 @@ export default function DealDetailPage() {
           </div>
         )}
 
-        {!isRentRollView && activeTab !== "overview" && (
+        {isOsView && dealId && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <OperatingStatementModule
+              dealId={dealId}
+              subView={activeTab}
+              onNavigate={setActiveTab}
+            />
+          </div>
+        )}
+
+        {!isRentRollView && !isOsView && activeTab !== "overview" && (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-muted-foreground text-sm">
-              {activeTab === "operating-statement" && "Operating Statement — coming soon."}
               {activeTab === "firstpass" && "FirstPass analysis — coming soon."}
               {activeTab === "sharing" && "Sharing settings — coming soon."}
             </p>
