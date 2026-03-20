@@ -3,6 +3,8 @@ import { UploadOperatingStatementModal } from "./UploadOperatingStatementModal";
 import { OsProcessingScreen } from "./OsProcessingScreen";
 import { OsEditableGrid } from "./OsEditableGrid";
 import { OsSummaryView } from "./OsSummaryView";
+import { OsRevenueView } from "./OsRevenueView";
+import { OsCashFlowsView } from "./OsCashFlowsView";
 import { OsManageView } from "./OsManageView";
 
 type Phase = "idle" | "upload" | "processing" | "editing" | "summary";
@@ -95,7 +97,15 @@ export function OperatingStatementModule({ dealId, subView = "os-summary", onNav
     );
   }
 
-  if (subView === "os-cash-flows" || subView === "os-revenue" || subView === "os-adjustments" || subView === "os-comps" || subView === "os-market-comp") {
+  if (subView === "os-revenue") {
+    return <OsRevenueView dealId={dealId} />;
+  }
+
+  if (subView === "os-cash-flows") {
+    return <OsCashFlowsView dealId={dealId} onUpload={() => setPhase("upload")} />;
+  }
+
+  if (subView === "os-adjustments" || subView === "os-comps" || subView === "os-market-comp") {
     return (
       <div className="flex-1 flex items-center justify-center py-20">
         <p className="text-sm text-muted-foreground">

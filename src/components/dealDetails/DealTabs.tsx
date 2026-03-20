@@ -10,27 +10,27 @@ const tabs = [
     subItems: [
       { id: "rent-roll-dashboard", label: "Rent Roll Dashboard" },
       { id: "rent-roll-floorplan", label: "Floor Plan Summary" },
-      { id: "rent-roll-table", label: "Rent Roll" },
-      { id: "rent-roll-comps", label: "Rent Roll Comps" },
-      { id: "rent-roll-manage", label: "Manage Rent Rolls" },
+      { id: "rent-roll-table",     label: "Rent Roll" },
+      { id: "rent-roll-comps",     label: "Rent Roll Comps" },
+      { id: "rent-roll-manage",    label: "Manage Rent Rolls" },
     ],
   },
   {
     id: "operating-statement",
     label: "Operating Statement",
     subItems: [
-      { id: "os-summary", label: "Summary" },
-      { id: "os-cash-flows", label: "Cash Flows" },
-      { id: "os-revenue", label: "Revenue Analysis" },
-      { id: "os-adjustments", label: "Adjustments" },
-      { id: "os-comps", label: "Operating Statement Comps" },
-      { id: "os-market-comp", label: "Market Comp Data (Beta)" },
-      { id: "os-source-data", label: "Source Data" },
-      { id: "os-manage", label: "Manage Operating Statement" },
+      { id: "os-summary",      label: "Summary" },
+      { id: "os-cash-flows",   label: "Cash Flows" },
+      { id: "os-revenue",      label: "Revenue Analysis" },
+      { id: "os-adjustments",  label: "Adjustments" },
+      { id: "os-comps",        label: "Operating Statement Comps" },
+      { id: "os-market-comp",  label: "Market Comp Data (Beta)" },
+      { id: "os-source-data",  label: "Source Data" },
+      { id: "os-manage",       label: "Manage Operating Statement" },
     ],
   },
   { id: "firstpass", label: "FirstPass" },
-  { id: "sharing", label: "Sharing" },
+  { id: "sharing",   label: "Sharing" },
 ];
 
 interface DealTabsProps {
@@ -53,14 +53,18 @@ export function DealTabs({ active, onSelect }: DealTabsProps) {
   }, []);
 
   const isRentRollActive = active.startsWith("rent-roll");
-  const isOsActive = active.startsWith("os-");
+  const isOsActive       = active.startsWith("os-");
 
   return (
-    <div className="border-b px-6" ref={containerRef}>
-      <nav className="flex gap-0 -mb-px">
+    <div className="border-b px-4 bg-white flex-shrink-0" ref={containerRef}>
+      <nav className="flex -mb-px">
         {tabs.map((tab) => {
           const isActive = tab.subItems
-            ? (tab.id === "rent-roll" ? isRentRollActive : tab.id === "operating-statement" ? isOsActive : false)
+            ? tab.id === "rent-roll"
+              ? isRentRollActive
+              : tab.id === "operating-statement"
+              ? isOsActive
+              : false
             : active === tab.id;
 
           return (
@@ -75,30 +79,27 @@ export function DealTabs({ active, onSelect }: DealTabsProps) {
                   }
                 }}
                 className={cn(
-                  "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1",
+                  "px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors flex items-center gap-0.5 whitespace-nowrap",
                   isActive
                     ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
                 )}
               >
                 {tab.label}
-                {tab.subItems && <ChevronDown className="h-3 w-3" />}
+                {tab.subItems && <ChevronDown className="h-2.5 w-2.5 ml-0.5" />}
               </button>
 
               {tab.subItems && openDropdown === tab.id && (
-                <div className="absolute left-0 top-full z-50 mt-px min-w-[200px] bg-background border rounded-md shadow-lg py-1">
+                <div className="absolute left-0 top-full z-50 mt-px min-w-[190px] bg-white border rounded-md shadow-lg py-1">
                   {tab.subItems.map((sub) => (
                     <button
                       key={sub.id}
-                      onClick={() => {
-                        onSelect(sub.id);
-                        setOpenDropdown(null);
-                      }}
+                      onClick={() => { onSelect(sub.id); setOpenDropdown(null); }}
                       className={cn(
-                        "block w-full text-left px-4 py-2 text-sm transition-colors",
+                        "block w-full text-left px-3.5 py-1.5 text-[12px] transition-colors",
                         active === sub.id
-                          ? "text-primary font-medium bg-muted/50"
-                          : "text-foreground hover:bg-muted/50"
+                          ? "text-primary font-medium bg-muted/40"
+                          : "text-foreground hover:bg-muted/40",
                       )}
                     >
                       {sub.label}

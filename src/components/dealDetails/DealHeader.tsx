@@ -8,17 +8,17 @@ interface DealHeaderProps {
 
 export function DealHeader({ deal }: DealHeaderProps) {
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-b">
-      <h1 className="text-lg font-semibold tracking-tight">
+    <div className="flex items-center justify-between px-5 py-2 border-b bg-white flex-shrink-0">
+      <h1 className="text-[14px] font-semibold tracking-tight text-foreground">
         {deal.deal_id} – {deal.deal_name}
       </h1>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Button variant="outline" size="sm">
-          <FileText className="h-4 w-4 mr-1.5" strokeWidth={1.5} />
+          <FileText strokeWidth={1.5} />
           Generate Model
         </Button>
         <Button size="sm">
-          <Upload className="h-4 w-4 mr-1.5" strokeWidth={1.5} />
+          <Upload strokeWidth={1.5} />
           Upload
         </Button>
       </div>

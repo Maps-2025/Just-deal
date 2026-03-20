@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Loader2, Download, Highlighter } from "lucide-react";
+import { Loader2, Download, FileSpreadsheet, Pencil, X } from "lucide-react";
 import { osDataApi, osMappingApi } from "@/services/operatingStatementApi";
 import type { OsBatchData, OsLineItemRow, ChartOfAccountItem } from "@/services/operatingStatementApi";
 import { SpecifyExpensesModal } from "./SpecifyExpensesModal";
-import { OsMappingPanel } from "./OsMappingPanel";
 import { toast } from "sonner";
 
 interface Props {
@@ -14,21 +12,23 @@ interface Props {
   onCancel: () => void;
 }
 
+// ── Column search state ───────────────────────────────────────────────────────
+interface ColFilter { description: string; account: string; }
+
 export function OsEditableGrid({ dealId, batchId, onSave, onCancel }: Props) {
-  const [data, setData] = useState<OsBatchData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [data, setData]                       = useState<OsBatchData | null>(null);
+  const [loading, setLoading]                 = useState(true);
+  const [saving, setSaving]                   = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [editedRows, setEditedRows] = useState<Set<string>>(new Set());
-  const [highlightOutliers, setHighlightOutliers] = useState(false);
+  const [editedRows, setEditedRows]           = useState<Set<string>>(new Set());
   const [chartOfAccounts, setChartOfAccounts] = useState<ChartOfAccountItem[]>([]);
   const [showMappingPanel, setShowMappingPanel] = useState(true);
-  const [view, setView] = useState<"actuals" | "proforma">("actuals");
-  const [adjustedValues, setAdjustedValues] = useState(true);
-  const [groupBy, setGroupBy] = useState("original");
+  const [colFilter, setColFilter]             = useState<ColFilter>({ description: "", account: "" });
+  const [view, setView]                       = useState<"actuals" | "proforma">("actuals");
+  const [highlightUnmapped, setHighlightUnmapped] = useState(false);
+  const [hoveredRow, setHoveredRow]           = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Load data
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -48,93 +48,86 @@ export function OsEditableGrid({ dealId, batchId, onSave, onCancel }: Props) {
     load();
   }, [dealId, batchId]);
 
-  // Cell edit handler
   const handleCellEdit = useCallback((rowId: string, colKey: string, value: number) => {
     setData(prev => {
       if (!prev) return prev;
-      const newRows = prev.rows.map(r => {
-        if (r.id !== rowId) return r;
-        return { ...r, values: { ...r.values, [colKey]: value } };
-      });
-      return { ...prev, rows: newRows };
+      return { ...prev, rows: prev.rows.map(r => r.id !== rowId ? r : { ...r, values: { ...r.values, [colKey]: value } }) };
     });
     setEditedRows(prev => new Set(prev).add(rowId));
   }, []);
 
-  // Mapping change handler
   const handleMappingChange = useCallback((rowId: string, accountId: number | null, account?: ChartOfAccountItem) => {
     setData(prev => {
       if (!prev) return prev;
-      const newRows = prev.rows.map(r => {
-        if (r.id !== rowId) return r;
-        return {
+      return {
+        ...prev,
+        rows: prev.rows.map(r => r.id !== rowId ? r : {
           ...r,
           mapping_account_id: accountId,
           mapping_account_name: account?.account_name || "",
           mapping_code: account?.code || "",
           is_expense: account?.is_expense ?? r.is_expense,
-        };
-      });
-      return { ...prev, rows: newRows };
+        }),
+      };
     });
     setEditedRows(prev => new Set(prev).add(rowId));
   }, []);
 
-  // Calculate summary
+  // Filtered rows
+  const visibleRows = useMemo(() => {
+    if (!data) return [];
+    const df = colFilter.description.toLowerCase();
+    const af = colFilter.account.toLowerCase();
+    if (!df && !af) return data.rows;
+    return data.rows.filter(r => {
+      if (df && !r.description.toLowerCase().includes(df)) return false;
+      if (af && !(r.mapping_account_name || "").toLowerCase().includes(af)) return false;
+      return true;
+    });
+  }, [data, colFilter]);
+
+  // Live NOI
   const summary = useMemo(() => {
     if (!data) return null;
     const cols = data.columns;
-    const income: Record<string, number> = {};
+    const income:  Record<string, number> = {};
     const expense: Record<string, number> = {};
-    const noi: Record<string, number> = {};
-
+    const noi:     Record<string, number> = {};
     cols.forEach(c => { income[c] = 0; expense[c] = 0; noi[c] = 0; });
-
     data.rows.forEach(r => {
-      if (r.is_section_header || r.is_subtotal) return;
+      if (r.is_section_header || r.is_subtotal || r.is_noi_row || r.is_ni_row) return;
       cols.forEach(c => {
         const v = r.values[c] || 0;
         if (r.is_expense) expense[c] += Math.abs(v);
         else income[c] += v;
       });
     });
-
     cols.forEach(c => { noi[c] = income[c] - expense[c]; });
-
     return { income, expense, noi };
   }, [data]);
 
-  // Mapping stats
   const mappingStats = useMemo(() => {
-    if (!data) return { mapped: 0, unmapped: 0 };
-    const lineItems = data.rows.filter(r => !r.is_section_header && !r.is_subtotal);
-    const mapped = lineItems.filter(r => r.mapping_account_id !== null).length;
-    return { mapped, unmapped: lineItems.length - mapped };
+    if (!data) return { mapped: 0, unmapped: 0, total: 0 };
+    const items = data.rows.filter(r => !r.is_section_header && !r.is_subtotal);
+    const mapped = items.filter(r => r.mapping_account_id !== null).length;
+    return { mapped, unmapped: items.length - mapped, total: items.length };
   }, [data]);
 
-  // Submit handler
-  const handleSubmit = () => {
-    setShowExpenseModal(true);
-  };
+  const handleSubmit = () => setShowExpenseModal(true);
 
   const handleExpenseConfirm = async (firstExpenseRow: string | null, noiRow: string | null, niRow: string | null) => {
     setShowExpenseModal(false);
     if (!data) return;
     setSaving(true);
     try {
-      const changedRows = data.rows
-        .filter(r => editedRows.has(r.id))
-        .map(r => ({ id: r.id, mapping_account_id: r.mapping_account_id, values: r.values }));
-
       await osDataApi.saveAll(dealId, data.batch_id, {
-        rows: changedRows.length > 0 ? changedRows : data.rows.map(r => ({ id: r.id, mapping_account_id: r.mapping_account_id, values: r.values })),
+        rows: data.rows.map(r => ({ id: r.id, mapping_account_id: r.mapping_account_id, values: r.values })),
         first_expense_row: firstExpenseRow || undefined,
         noi_row: noiRow || undefined,
         ni_row: niRow || undefined,
       });
-
       await osDataApi.lockBatch(dealId, data.batch_id);
-      toast.success("Operating statement saved successfully");
+      toast.success("Operating statement saved");
       onSave();
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -143,211 +136,282 @@ export function OsEditableGrid({ dealId, batchId, onSave, onCancel }: Props) {
     }
   };
 
-  const fmtCurrency = (v: number | undefined) => {
-    if (v === undefined || v === null) return "-";
+  // ── Number formatting ─────────────────────────────────────────────────────
+  const fmt = (v: number | undefined | null): string => {
+    if (v === undefined || v === null || v === 0) return "–";
     const abs = Math.abs(v);
-    const formatted = abs.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    return v < 0 ? `(${formatted})` : formatted;
+    const s   = abs.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return v < 0 ? `($ ${s})` : `$ ${s}`;
   };
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--primary))]" />
-      </div>
-    );
-  }
+  // ── Loading / empty ───────────────────────────────────────────────────────
+  if (loading) return (
+    <div className="flex-1 flex items-center justify-center">
+      <Loader2 className="h-7 w-7 animate-spin text-primary" />
+    </div>
+  );
+  if (!data || data.rows.length === 0) return (
+    <div className="flex-1 flex items-center justify-center">
+      <p className="text-sm text-muted-foreground">No operating statement data available.</p>
+    </div>
+  );
 
-  if (!data || data.rows.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center py-20">
-        <p className="text-sm text-muted-foreground">No operating statement data available.</p>
-      </div>
-    );
-  }
+  // ── Column widths ─────────────────────────────────────────────────────────
+  const COD_W  = 52;   // code
+  const ACC_W  = 148;  // account mapping
+  const LI_W   = 210;  // line item
+  const VAL_W  = 96;   // each month column
+  const tableMinW = COD_W + ACC_W + LI_W + data.columns.length * VAL_W;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Control bar */}
-      <div className="border-b px-4 py-2 flex items-center justify-between gap-3 flex-shrink-0 bg-background">
-        <div className="flex items-center gap-3">
-          {/* View selector */}
+    <div className="flex flex-col h-full overflow-hidden bg-white">
+
+      {/* ── Top action bar ───────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b px-4 py-1.5 flex-shrink-0 bg-white gap-4">
+        {/* Left: mapping stats */}
+        <div className="flex items-center gap-4 text-[12px]">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">View:</span>
-            <select
-              value={view}
-              onChange={(e) => setView(e.target.value as any)}
-              className="h-7 px-2 text-xs border rounded bg-background text-foreground"
-            >
+            <span className="text-muted-foreground">View:</span>
+            <select value={view} onChange={e => setView(e.target.value as any)}
+              className="h-6 px-1.5 border rounded text-[11px] bg-white focus:outline-none focus:ring-1 focus:ring-primary">
               <option value="actuals">Actuals</option>
               <option value="proforma">Proforma</option>
             </select>
           </div>
 
-          {/* Adjusted Values */}
-          <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-            <span className="text-muted-foreground">Adjusted Values</span>
-            <input
-              type="checkbox"
-              checked={adjustedValues}
-              onChange={() => setAdjustedValues(!adjustedValues)}
-              className="h-3.5 w-3.5 rounded border accent-[hsl(var(--primary))]"
-            />
-          </label>
+          <button
+            onClick={() => setHighlightUnmapped(v => !v)}
+            className={`h-6 px-2.5 border rounded text-[11px] flex items-center gap-1 transition-colors ${
+              highlightUnmapped ? "bg-amber-50 border-amber-300 text-amber-800" : "hover:bg-muted/30"
+            }`}
+          >
+            Highlight Unmapped
+          </button>
 
-          {/* Group By */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Group by:</span>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value)}
-              className="h-7 px-2 text-xs border rounded bg-background text-foreground"
-            >
-              <option value="original">Original Order</option>
-              <option value="category">Category</option>
-            </select>
-          </div>
+          {mappingStats.unmapped > 0 && (
+            <span className="text-[11px] text-amber-700 font-medium">
+              {mappingStats.unmapped} unmapped rows
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setShowMappingPanel(!showMappingPanel)}>
-            Mappings
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-            This Batch
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs gap-1.5"
-            onClick={() => setHighlightOutliers(!highlightOutliers)}
+        {/* Right: action buttons */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowMappingPanel(v => !v)}
+            className="h-7 px-3 border rounded text-[12px] hover:bg-muted/20 transition-colors flex items-center gap-1.5"
           >
-            <Highlighter className="h-3 w-3" />
-            Highlight Outliers
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-            <Download className="h-3 w-3" /> Export to Excel
-          </Button>
+            <Pencil className="h-3 w-3" />
+            Mappings
+          </button>
+          <button className="h-7 px-3 border rounded text-[12px] hover:bg-muted/20 transition-colors flex items-center gap-1.5">
+            <Download className="h-3 w-3" />
+            Export to Excel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="h-7 px-4 rounded text-[12px] font-medium text-white bg-[hsl(200,70%,45%)] hover:bg-[hsl(200,70%,38%)] disabled:opacity-60 transition-colors"
+          >
+            {saving ? "Saving…" : "Submit"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="h-7 px-3 border rounded text-[12px] hover:bg-muted/20 transition-colors"
+          >
+            Cancel
+          </button>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Table area */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Action bar */}
-          <div className="flex items-center justify-end px-4 py-2 border-b flex-shrink-0 gap-2">
-            <Button
-              size="sm"
-              className="bg-[hsl(200,70%,45%)] hover:bg-[hsl(200,70%,40%)] text-white"
-              onClick={handleSubmit}
-              disabled={saving}
+      {/* ── Selected row count strip ─────────────────────────────────── */}
+      <div className="flex items-center justify-between border-b px-4 py-1 flex-shrink-0 bg-[#f8f9fa]">
+        <span className="text-[11px] text-muted-foreground">
+          {editedRows.size > 0
+            ? `${editedRows.size} row${editedRows.size !== 1 ? "s" : ""} edited`
+            : `${data.rows.filter(r => !r.is_section_header && !r.is_subtotal).length} line items`
+          }
+        </span>
+        <div className="flex items-center gap-3">
+          {mappingStats.mapped > 0 && (
+            <button className="text-[11px] text-primary hover:underline">
+              » {mappingStats.mapped} Mappings Applied
+            </button>
+          )}
+          {mappingStats.unmapped > 0 && (
+            <button
+              onClick={() => setHighlightUnmapped(true)}
+              className="text-[11px] text-amber-700 hover:underline"
             >
-              {saving ? "Saving…" : "Submit"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={onCancel}>
-              Cancel
-            </Button>
-          </div>
+              » {mappingStats.unmapped} Not Matched
+            </button>
+          )}
+        </div>
+      </div>
 
-          {/* Scrollable table */}
+      {/* ── Main area ────────────────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Table */}
+        <div className="flex-1 overflow-hidden flex flex-col">
           <div ref={scrollRef} className="flex-1 overflow-auto">
-            <table className="w-full text-[13px] border-collapse min-w-[900px]">
-              {/* Header */}
-              <thead className="sticky top-0 z-10 bg-background">
-                {/* Row: Frequency */}
-                <tr className="border-b">
-                  <th className="sticky left-0 bg-muted/50 z-20 text-left px-3 py-1.5 font-medium text-muted-foreground border-r min-w-[60px]">
-                    
-                  </th>
-                  <th className="sticky left-[60px] bg-muted/50 z-20 text-left px-3 py-1.5 font-medium text-muted-foreground border-r min-w-[140px]">
+            <table
+              className="border-collapse"
+              style={{ minWidth: tableMinW, tableLayout: "fixed", width: "100%" }}
+            >
+              <colgroup>
+                <col style={{ width: COD_W, minWidth: COD_W }} />
+                <col style={{ width: ACC_W, minWidth: ACC_W }} />
+                <col style={{ width: LI_W,  minWidth: LI_W  }} />
+                {data.columns.map(c => (
+                  <col key={c} style={{ width: VAL_W, minWidth: VAL_W }} />
+                ))}
+              </colgroup>
+
+              <thead className="sticky top-0 z-20">
+                {/* ── Row 1: frequency dropdowns + month labels ──── */}
+                <tr style={{ background: "#f4f5f7", borderBottom: "1px solid #dde1e7" }}>
+                  <th style={{ ...TH, width: COD_W, borderRight: "1px solid #dde1e7" }} />
+                  <th style={{ ...TH, width: ACC_W, borderRight: "1px solid #dde1e7", textAlign: "left" }}>
                     Account
                   </th>
-                  <th className="sticky left-[200px] bg-muted/50 z-20 text-left px-3 py-1.5 font-medium text-muted-foreground border-r min-w-[180px]">
+                  <th style={{ ...TH, width: LI_W, borderRight: "1px solid #dde1e7", textAlign: "left" }}>
                     Line Item
                   </th>
                   {data.columns.map((col, i) => (
-                    <th key={col} className="bg-muted/50 text-center px-2 py-1.5 font-normal text-muted-foreground min-w-[100px] border-r">
-                      <select className="text-xs bg-transparent border-0 text-center w-full cursor-pointer text-muted-foreground">
+                    <th key={col} style={{ ...TH, width: VAL_W, borderRight: "1px solid #dde1e7", textAlign: "center" }}>
+                      <select style={{ fontSize: 11, background: "transparent", border: "none", width: "100%", textAlign: "center", cursor: "pointer", color: "#6b7280", outline: "none" }}>
                         <option>Monthly</option>
                         <option>Annual</option>
                       </select>
                     </th>
                   ))}
                 </tr>
-                {/* Row: Month labels */}
-                <tr className="border-b bg-muted/30">
-                  <th className="sticky left-0 bg-muted/30 z-20 border-r px-3 py-1.5"></th>
-                  <th className="sticky left-[60px] bg-muted/30 z-20 border-r px-3 py-1.5"></th>
-                  <th className="sticky left-[200px] bg-muted/30 z-20 border-r px-3 py-1.5"></th>
+
+                {/* ── Row 2: month labels ────────────────────────── */}
+                <tr style={{ background: "#f9fafb", borderBottom: "2px solid #dde1e7" }}>
+                  <th style={{ ...TH, width: COD_W, borderRight: "1px solid #dde1e7", color: "#6b7280", fontSize: 10 }}>
+                    Code
+                  </th>
+                  <th style={{ ...TH, width: ACC_W, borderRight: "1px solid #dde1e7", textAlign: "left", color: "#374151" }} />
+                  <th style={{ ...TH, width: LI_W, borderRight: "1px solid #dde1e7", textAlign: "left", color: "#374151" }} />
                   {data.column_labels.map((label, i) => (
-                    <th key={i} className="bg-muted/30 text-center px-2 py-1.5 font-medium text-xs text-foreground min-w-[100px] border-r">
+                    <th key={i} style={{ ...TH, width: VAL_W, borderRight: "1px solid #dde1e7", textAlign: "right", color: "#374151", fontWeight: 600 }}>
                       {label}
                     </th>
+                  ))}
+                </tr>
+
+                {/* ── Row 3: column search filters ──────────────── */}
+                <tr style={{ background: "#fff", borderBottom: "1px solid #e5e7eb" }}>
+                  <td style={{ ...TD, width: COD_W, borderRight: "1px solid #e5e7eb" }} />
+                  <td style={{ padding: "3px 6px", width: ACC_W, borderRight: "1px solid #e5e7eb" }}>
+                    <input
+                      placeholder=""
+                      value={colFilter.account}
+                      onChange={e => setColFilter(p => ({ ...p, account: e.target.value }))}
+                      style={FILTER_INPUT}
+                    />
+                  </td>
+                  <td style={{ padding: "3px 6px", width: LI_W, borderRight: "1px solid #e5e7eb" }}>
+                    <input
+                      placeholder=""
+                      value={colFilter.description}
+                      onChange={e => setColFilter(p => ({ ...p, description: e.target.value }))}
+                      style={FILTER_INPUT}
+                    />
+                  </td>
+                  {data.columns.map(c => (
+                    <td key={c} style={{ ...TD, width: VAL_W, borderRight: "1px solid #e5e7eb" }} />
                   ))}
                 </tr>
               </thead>
 
               <tbody>
-                {data.rows.map((row, rowIdx) => {
-                  const isSection = row.is_section_header;
-                  const isSubtotal = row.is_subtotal;
-                  const isEdited = editedRows.has(row.id);
-                  const isLowConfidence = (row.mapping_score ?? 100) < 80;
-                  const isNegativeRow = row.is_negative;
-                  const isHighlighted = highlightOutliers && isLowConfidence;
+                {visibleRows.map((row) => {
+                  const isEdited    = editedRows.has(row.id);
+                  const isHovered   = hoveredRow === row.id;
+                  const isHeader    = row.is_section_header;
+                  const isSubtotal  = row.is_subtotal;
+                  const isSpecial   = row.is_noi_row || row.is_ni_row;
+                  const isUnmapped  = highlightUnmapped && !row.mapping_account_id && !isHeader && !isSubtotal;
+
+                  // Row background
+                  let rowBg = "#fff";
+                  if (isHeader)   rowBg = "#f4f5f7";
+                  else if (isSubtotal) rowBg = "#f9fafb";
+                  else if (isSpecial)  rowBg = "#ebf5ff";
+                  else if (isEdited)   rowBg = "#fffbeb";
+                  else if (isUnmapped) rowBg = "#fffbeb";
+                  if (isHovered && !isHeader) rowBg = "#e8f0fe";
 
                   return (
                     <tr
                       key={row.id}
-                      className={`border-b transition-colors ${
-                        isSection
-                          ? "bg-muted/40 font-semibold"
-                          : isSubtotal
-                          ? "bg-muted/20 font-semibold"
-                          : isEdited
-                          ? "bg-yellow-50/50"
-                          : isHighlighted
-                          ? "bg-amber-50"
-                          : "hover:bg-muted/20"
-                      }`}
+                      onMouseEnter={() => setHoveredRow(row.id)}
+                      onMouseLeave={() => setHoveredRow(null)}
+                      style={{
+                        background: rowBg,
+                        borderBottom: "1px solid #e5e7eb",
+                        height: isHeader ? 28 : 26,
+                        transition: "background 80ms",
+                      }}
                     >
                       {/* Code */}
-                      <td className="sticky left-0 bg-inherit z-10 px-3 py-1 border-r text-xs text-muted-foreground font-mono">
-                        {row.mapping_code || ""}
+                      <td style={{ ...TD, width: COD_W, borderRight: "1px solid #e5e7eb", textAlign: "center", fontFamily: "monospace", fontSize: 10, color: "#9ca3af" }}>
+                        {!isHeader && row.mapping_code}
                       </td>
+
                       {/* Account */}
-                      <td className="sticky left-[60px] bg-inherit z-10 px-3 py-1 border-r text-xs">
-                        {!isSection && !isSubtotal ? (
+                      <td style={{ ...TD, width: ACC_W, borderRight: "1px solid #e5e7eb", overflow: "hidden" }}>
+                        {!isHeader && !isSubtotal && !isSpecial ? (
                           <MappingDropdown
                             value={row.mapping_account_id}
                             accounts={chartOfAccounts}
                             displayValue={row.mapping_account_name || ""}
+                            isLowConf={(row.mapping_score ?? 100) < 80}
                             onChange={(id, acc) => handleMappingChange(row.id, id, acc)}
                           />
                         ) : (
-                          <span className="text-muted-foreground">{row.mapping_account_name || ""}</span>
+                          <span style={{ fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                            {row.mapping_account_name || ""}
+                          </span>
                         )}
                       </td>
+
                       {/* Line Item */}
-                      <td className={`sticky left-[200px] bg-inherit z-10 px-3 py-1 border-r ${
-                        isSection ? "text-foreground" : "text-foreground"
-                      }`}>
+                      <td style={{
+                        ...TD, width: LI_W, borderRight: "1px solid #e5e7eb",
+                        fontWeight: isHeader || isSpecial ? 600 : isSubtotal ? 500 : 400,
+                        paddingLeft: isHeader ? 8 : isSubtotal ? 8 : 8,
+                        fontSize: isHeader ? 12 : 12,
+                        color: isSpecial ? "#1d4ed8" : isHeader ? "#111827" : "#374151",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
                         {row.description}
                       </td>
-                      {/* Values */}
-                      {data.columns.map((col) => {
+
+                      {/* Monthly values */}
+                      {data.columns.map(col => {
                         const val = row.values[col];
-                        if (isSection) {
-                          return <td key={col} className="px-2 py-1 border-r"></td>;
-                        }
+                        if (isHeader) return (
+                          <td key={col} style={{ ...TD, width: VAL_W, borderRight: "1px solid #e5e7eb" }} />
+                        );
+                        if (isSubtotal || isSpecial) return (
+                          <td key={col} style={{
+                            ...TD, width: VAL_W, borderRight: "1px solid #e5e7eb",
+                            textAlign: "right", fontWeight: 600, fontSize: 12,
+                            color: (val ?? 0) < 0 ? "#dc2626" : isSpecial ? "#1d4ed8" : "#111827",
+                          }}>
+                            {fmt(val)}
+                          </td>
+                        );
                         return (
-                          <td key={col} className="px-1 py-0.5 border-r text-right">
+                          <td key={col} style={{ padding: 0, width: VAL_W, borderRight: "1px solid #e5e7eb" }}>
                             <EditableCell
                               value={val}
-                              isNegative={isNegativeRow}
-                              onChange={(v) => handleCellEdit(row.id, col, v)}
                               readOnly={data.is_locked}
+                              onChange={v => handleCellEdit(row.id, col, v)}
                             />
                           </td>
                         );
@@ -358,21 +422,25 @@ export function OsEditableGrid({ dealId, batchId, onSave, onCancel }: Props) {
               </tbody>
             </table>
 
-            {/* Summary / NOI section */}
+            {/* ── NOI footer ──────────────────────────────────── */}
             {summary && (
-              <div className="sticky bottom-0 bg-background border-t-2 border-foreground/20">
-                <table className="w-full text-[13px] border-collapse min-w-[900px]">
+              <div style={{
+                position: "sticky", bottom: 0, zIndex: 20,
+                borderTop: "2px solid #94a3b8",
+                boxShadow: "0 -2px 8px rgba(0,0,0,0.07)",
+                background: "#fff",
+              }}>
+                <table className="border-collapse" style={{ minWidth: tableMinW, tableLayout: "fixed", width: "100%" }}>
+                  <colgroup>
+                    <col style={{ width: COD_W }} />
+                    <col style={{ width: ACC_W }} />
+                    <col style={{ width: LI_W  }} />
+                    {data.columns.map(c => <col key={c} style={{ width: VAL_W }} />)}
+                  </colgroup>
                   <tbody>
-                    <SummaryRow label="Calculated NOI" values={summary.noi} columns={data.columns} className="font-semibold" />
-                    {data.summary.original_noi && (
-                      <SummaryRow label="Original NOI (Adjusted)" values={data.summary.original_noi} columns={data.columns} className="text-muted-foreground" />
-                    )}
-                    {data.summary.noi_variance && (
-                      <SummaryRow label="NOI Variance" values={data.summary.noi_variance} columns={data.columns} className="text-muted-foreground" />
-                    )}
-                    {data.summary.total_variance && (
-                      <SummaryRow label="Total Variance" values={data.summary.total_variance} columns={data.columns} className="font-semibold bg-yellow-50" />
-                    )}
+                    <FooterRow label="Total Income"   values={summary.income}  columns={data.columns} COD_W={COD_W} ACC_W={ACC_W} LI_W={LI_W} VAL_W={VAL_W} color="#059669" />
+                    <FooterRow label="Total Expense"  values={summary.expense} columns={data.columns} COD_W={COD_W} ACC_W={ACC_W} LI_W={LI_W} VAL_W={VAL_W} color="#dc2626" />
+                    <FooterRow label="NOI"            values={summary.noi}     columns={data.columns} COD_W={COD_W} ACC_W={ACC_W} LI_W={LI_W} VAL_W={VAL_W} color="#1d4ed8" bold bg="#eff6ff" />
                   </tbody>
                 </table>
               </div>
@@ -380,17 +448,63 @@ export function OsEditableGrid({ dealId, batchId, onSave, onCancel }: Props) {
           </div>
         </div>
 
-        {/* Right panel - Mapping info */}
+        {/* ── Right mapping panel ──────────────────────────────────── */}
         {showMappingPanel && (
-          <OsMappingPanel
-            mapped={mappingStats.mapped}
-            unmapped={mappingStats.unmapped}
-            onClose={() => setShowMappingPanel(false)}
-          />
+          <div style={{ width: 200, flexShrink: 0, borderLeft: "1px solid #e5e7eb", background: "#fafafa", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>Info</span>
+              <button onClick={() => setShowMappingPanel(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", padding: 2 }}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div style={{ padding: "10px 12px", fontSize: 11, lineHeight: 1.6 }}>
+              <p style={{ color: "#6b7280", marginBottom: 8 }}>Click below to toggle highlighting.</p>
+
+              <button
+                onClick={() => setHighlightUnmapped(false)}
+                style={{ display: "block", color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: "2px 0", width: "100%", textAlign: "left" }}
+              >
+                » {mappingStats.mapped} Mappings Applied
+              </button>
+
+              <button
+                onClick={() => setHighlightUnmapped(true)}
+                style={{ display: "block", color: mappingStats.unmapped > 0 ? "#dc2626" : "#6b7280", background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: "2px 0", width: "100%", textAlign: "left" }}
+              >
+                » {mappingStats.unmapped} Mappings Not Matched
+              </button>
+
+              {highlightUnmapped && (
+                <button
+                  onClick={() => setHighlightUnmapped(false)}
+                  style={{ display: "block", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontSize: 11, padding: "6px 0 2px", width: "100%", textAlign: "left" }}
+                >
+                  ✕ Remove Highlights
+                </button>
+              )}
+
+              <div style={{ marginTop: 16, borderTop: "1px solid #e5e7eb", paddingTop: 10 }}>
+                <p style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, marginBottom: 6 }}>
+                  Progress
+                </p>
+                <div style={{ background: "#e5e7eb", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                  <div style={{
+                    background: mappingStats.unmapped === 0 ? "#059669" : "#2563eb",
+                    height: "100%",
+                    width: `${mappingStats.total > 0 ? (mappingStats.mapped / mappingStats.total) * 100 : 0}%`,
+                    borderRadius: 4,
+                    transition: "width 0.3s",
+                  }} />
+                </div>
+                <p style={{ fontSize: 10, color: "#6b7280", marginTop: 4 }}>
+                  {mappingStats.mapped} / {mappingStats.total} mapped
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Expense modal */}
       {showExpenseModal && (
         <SpecifyExpensesModal
           rows={data.rows}
@@ -402,23 +516,82 @@ export function OsEditableGrid({ dealId, batchId, onSave, onCancel }: Props) {
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ── Style constants ───────────────────────────────────────────────────────────
+const TH: React.CSSProperties = {
+  padding: "6px 10px",
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase" as const,
+  color: "#6b7280",
+  whiteSpace: "nowrap",
+  borderBottom: "1px solid #dde1e7",
+};
 
-function EditableCell({ value, isNegative, onChange, readOnly }: {
-  value: number | undefined;
-  isNegative?: boolean;
-  onChange: (v: number) => void;
-  readOnly?: boolean;
+const TD: React.CSSProperties = {
+  padding: "3px 8px",
+  fontSize: 12,
+  color: "#374151",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const FILTER_INPUT: React.CSSProperties = {
+  width: "100%",
+  height: 22,
+  border: "1px solid #d1d5db",
+  borderRadius: 3,
+  padding: "0 6px",
+  fontSize: 11,
+  background: "#fff",
+  outline: "none",
+  color: "#374151",
+};
+
+// ── FooterRow ─────────────────────────────────────────────────────────────────
+function FooterRow({ label, values, columns, COD_W, ACC_W, LI_W, VAL_W, color, bold = false, bg = "#fff" }: {
+  label: string; values: Record<string, number>; columns: string[];
+  COD_W: number; ACC_W: number; LI_W: number; VAL_W: number;
+  color?: string; bold?: boolean; bg?: string;
 }) {
-  const [editing, setEditing] = useState(false);
+  const fmt = (v: number) => {
+    const abs = Math.abs(v);
+    const s = abs.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return v < 0 ? `($ ${s})` : v === 0 ? "–" : `$ ${s}`;
+  };
+  return (
+    <tr style={{ background: bg, borderBottom: "1px solid #e5e7eb", height: 28 }}>
+      <td style={{ ...TD, width: COD_W, borderRight: "1px solid #e5e7eb" }} />
+      <td style={{ ...TD, width: ACC_W, borderRight: "1px solid #e5e7eb" }} />
+      <td style={{ ...TD, width: LI_W,  borderRight: "1px solid #e5e7eb", fontWeight: bold ? 700 : 600, color: color || "#111827" }}>
+        {label}
+      </td>
+      {columns.map(col => {
+        const v = values[col] || 0;
+        return (
+          <td key={col} style={{ ...TD, width: VAL_W, borderRight: "1px solid #e5e7eb", textAlign: "right", fontWeight: bold ? 700 : 600, color: v < 0 ? "#dc2626" : (color || "#111827") }}>
+            {fmt(v)}
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
+
+// ── EditableCell ──────────────────────────────────────────────────────────────
+function EditableCell({ value, onChange, readOnly }: {
+  value: number | undefined; onChange: (v: number) => void; readOnly?: boolean;
+}) {
+  const [editing,  setEditing]  = useState(false);
   const [localVal, setLocalVal] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const display = useMemo(() => {
-    if (value === undefined || value === null) return "-";
+    if (value === undefined || value === null || value === 0) return "–";
     const abs = Math.abs(value);
-    const formatted = abs.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    return value < 0 ? `(${formatted})` : formatted;
+    const s = abs.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return value < 0 ? `($ ${s})` : `$ ${s}`;
   }, [value]);
 
   const startEdit = () => {
@@ -428,134 +601,155 @@ function EditableCell({ value, isNegative, onChange, readOnly }: {
     setTimeout(() => inputRef.current?.select(), 0);
   };
 
-  const commitEdit = () => {
+  const commit = () => {
     setEditing(false);
-    const num = parseFloat(localVal.replace(/[,$()]/g, ''));
-    if (!isNaN(num)) {
-      onChange(localVal.includes('(') ? -Math.abs(num) : num);
-    }
+    const num = parseFloat(localVal.replace(/[$,\s()]/g, ""));
+    if (!isNaN(num)) onChange(localVal.includes("(") ? -Math.abs(num) : num);
   };
 
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        value={localVal}
-        onChange={(e) => setLocalVal(e.target.value)}
-        onBlur={commitEdit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commitEdit();
-          if (e.key === "Escape") setEditing(false);
-        }}
-        className="w-full h-6 px-1 text-right text-[13px] border border-[hsl(var(--primary))] rounded-sm bg-background focus:outline-none"
-        autoFocus
-      />
-    );
-  }
+  if (editing) return (
+    <input ref={inputRef} value={localVal}
+      onChange={e => setLocalVal(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === "Tab") commit(); if (e.key === "Escape") setEditing(false); }}
+      style={{ width: "100%", height: 24, padding: "0 8px", textAlign: "right", fontSize: 12, border: "1px solid #2563eb", borderRadius: 2, outline: "none", background: "#fff" }}
+      autoFocus
+    />
+  );
 
   return (
     <div
       onClick={startEdit}
-      className={`px-1 py-0.5 cursor-text text-right rounded-sm hover:bg-muted/30 transition-colors min-h-[24px] ${
-        (value ?? 0) < 0 ? "text-destructive" : ""
-      }`}
+      style={{
+        padding: "3px 8px", textAlign: "right", fontSize: 12,
+        cursor: readOnly ? "default" : "text",
+        minHeight: 24, lineHeight: "18px",
+        color: (value ?? 0) < 0 ? "#dc2626" : "#374151",
+        userSelect: "none",
+      }}
+      className={!readOnly ? "hover:bg-blue-50 transition-colors" : ""}
     >
       {display}
     </div>
   );
 }
 
-function MappingDropdown({ value, accounts, displayValue, onChange }: {
-  value: number | null;
-  accounts: ChartOfAccountItem[];
-  displayValue: string;
+// ── MappingDropdown ───────────────────────────────────────────────────────────
+function MappingDropdown({ value, accounts, displayValue, isLowConf, onChange }: {
+  value: number | null; accounts: ChartOfAccountItem[];
+  displayValue: string; isLowConf?: boolean;
   onChange: (id: number | null, account?: ChartOfAccountItem) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open,   setOpen]   = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    if (open) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    if (open) document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
-  const filtered = accounts.filter(a =>
-    a.account_name.toLowerCase().includes(search.toLowerCase()) ||
-    a.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() =>
+    accounts.filter(a =>
+      a.account_name.toLowerCase().includes(search.toLowerCase()) ||
+      a.code.toLowerCase().includes(search.toLowerCase())
+    ), [accounts, search]);
+
+  const incomeList  = filtered.filter(a => !a.is_expense);
+  const expenseList = filtered.filter(a =>  a.is_expense);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} style={{ position: "relative", width: "100%" }}>
       <button
-        onClick={() => setOpen(!open)}
-        className="text-left text-xs truncate w-full hover:text-[hsl(var(--primary))] transition-colors"
+        onClick={() => setOpen(v => !v)}
+        title={displayValue || "Select an Option"}
+        style={{
+          display: "block", width: "100%", textAlign: "left",
+          background: "none", border: "none", cursor: "pointer",
+          fontSize: 11, padding: "1px 0",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          color: !displayValue ? "#9ca3af" : isLowConf ? "#92400e" : "#374151",
+          fontStyle: !displayValue ? "italic" : "normal",
+        }}
       >
-        {displayValue || (
-          <span className="text-muted-foreground italic">Select an Option</span>
-        )}
+        {displayValue || "Select an Option"}
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 bg-background border rounded-md shadow-lg w-64 max-h-64 overflow-hidden">
-          <div className="p-1.5 border-b">
+        <div style={{
+          position: "absolute", left: 0, top: "100%", zIndex: 100,
+          background: "#fff", border: "1px solid #d1d5db",
+          borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+          width: 240, maxHeight: 300, display: "flex", flexDirection: "column",
+        }}>
+          <div style={{ padding: "6px 8px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
             <input
               placeholder="Search…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-7 px-2 text-xs border rounded bg-background focus:outline-none"
+              onChange={e => setSearch(e.target.value)}
               autoFocus
+              style={{ width: "100%", height: 24, border: "1px solid #d1d5db", borderRadius: 3, padding: "0 8px", fontSize: 11, outline: "none" }}
             />
           </div>
-          <div className="overflow-y-auto max-h-48">
-            {filtered.map(a => (
-              <button
-                key={a.id}
-                onClick={() => { onChange(a.id, a); setOpen(false); }}
-                className={`block w-full text-left px-3 py-1.5 text-xs hover:bg-muted/50 transition-colors ${
-                  a.id === value ? "bg-muted/50 font-medium" : ""
-                }`}
-              >
-                {a.account_name} <span className="text-muted-foreground">[{a.code}]</span>
-              </button>
-            ))}
+          <div style={{ overflowY: "auto", flex: 1 }}>
+            {incomeList.length > 0 && <>
+              <div style={{ padding: "4px 10px 2px", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9ca3af", background: "#f9fafb", position: "sticky", top: 0 }}>
+                Income
+              </div>
+              {incomeList.map(a => (
+                <button key={a.id}
+                  onClick={() => { onChange(a.id, a); setOpen(false); setSearch(""); }}
+                  style={{
+                    display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                    padding: "5px 10px", fontSize: 11, background: a.id === value ? "#eff6ff" : "none",
+                    border: "none", cursor: "pointer", textAlign: "left", fontWeight: a.id === value ? 600 : 400,
+                    color: "#374151",
+                  }}
+                  className="hover:bg-slate-50"
+                >
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.account_name}</span>
+                  <span style={{ marginLeft: 8, fontSize: 10, color: "#9ca3af", fontFamily: "monospace", flexShrink: 0 }}>[{a.code}]</span>
+                </button>
+              ))}
+            </>}
+            {expenseList.length > 0 && <>
+              <div style={{ padding: "4px 10px 2px", fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9ca3af", background: "#f9fafb", position: "sticky", top: 0 }}>
+                Expense
+              </div>
+              {expenseList.map(a => (
+                <button key={a.id}
+                  onClick={() => { onChange(a.id, a); setOpen(false); setSearch(""); }}
+                  style={{
+                    display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                    padding: "5px 10px", fontSize: 11, background: a.id === value ? "#eff6ff" : "none",
+                    border: "none", cursor: "pointer", textAlign: "left", fontWeight: a.id === value ? 600 : 400,
+                    color: "#374151",
+                  }}
+                  className="hover:bg-slate-50"
+                >
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.account_name}</span>
+                  <span style={{ marginLeft: 8, fontSize: 10, color: "#9ca3af", fontFamily: "monospace", flexShrink: 0 }}>[{a.code}]</span>
+                </button>
+              ))}
+            </>}
             {filtered.length === 0 && (
-              <p className="text-xs text-muted-foreground p-3 text-center">No results</p>
+              <p style={{ textAlign: "center", padding: 12, fontSize: 11, color: "#9ca3af" }}>No results</p>
             )}
           </div>
+          {value !== null && (
+            <div style={{ borderTop: "1px solid #e5e7eb", flexShrink: 0 }}>
+              <button
+                onClick={() => { onChange(null); setOpen(false); }}
+                style={{ width: "100%", textAlign: "left", padding: "6px 10px", fontSize: 11, color: "#dc2626", background: "none", border: "none", cursor: "pointer" }}
+                className="hover:bg-slate-50"
+              >
+                Clear mapping
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
-  );
-}
-
-function SummaryRow({ label, values, columns, className = "" }: {
-  label: string;
-  values: Record<string, number>;
-  columns: string[];
-  className?: string;
-}) {
-  const fmtCurrency = (v: number) => {
-    const abs = Math.abs(v);
-    const formatted = abs.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    return v < 0 ? `(${formatted})` : formatted;
-  };
-
-  return (
-    <tr className={`border-b ${className}`}>
-      <td className="sticky left-0 bg-inherit z-10 px-3 py-1.5 border-r min-w-[60px]"></td>
-      <td className="sticky left-[60px] bg-inherit z-10 px-3 py-1.5 border-r min-w-[140px]"></td>
-      <td className="sticky left-[200px] bg-inherit z-10 px-3 py-1.5 border-r min-w-[180px] text-sm">
-        {label}
-      </td>
-      {columns.map(col => (
-        <td key={col} className="px-2 py-1.5 text-right text-[13px] border-r min-w-[100px]">
-          {fmtCurrency(values[col] || 0)}
-        </td>
-      ))}
-    </tr>
   );
 }

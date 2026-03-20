@@ -9,81 +9,186 @@
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-    --background: 0 0% 100%;
-    --foreground: 224 71% 4%;
+    --background:          0 0% 100%;
+    --foreground:          222 47% 11%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 224 71% 4%;
+    --card:                0 0% 100%;
+    --card-foreground:     222 47% 11%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71% 4%;
+    --popover:             0 0% 100%;
+    --popover-foreground:  222 47% 11%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
+    --primary:             213 94% 40%;
+    --primary-foreground:  0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 224 71% 4%;
+    --secondary:           210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted:               210 40% 96%;
+    --muted-foreground:    215 20% 50%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 224 71% 4%;
+    --accent:              210 40% 96%;
+    --accent-foreground:   222 47% 11%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
+    --success:             142 71% 38%;
+    --success-foreground:  0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning:             38 92% 50%;
+    --warning-foreground:  0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive:         0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border:              214 32% 89%;
+    --input:               214 32% 89%;
+    --ring:                213 94% 40%;
 
-    --radius: 0.5rem;
+    --radius:    0.375rem;
     --radius-sm: 0.25rem;
 
-    --shadow-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-focus: 0 0 0 2px hsl(0 0% 100%), 0 0 0 4px hsl(221 83% 53%);
+    --shadow-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+    --shadow-card:   0 1px 4px 0 rgb(0 0 0 / 0.06);
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 224 71% 4%;
-    --sidebar-primary: 221 83% 53%;
+    --sidebar-background:         0 0% 100%;
+    --sidebar-foreground:         222 47% 11%;
+    --sidebar-primary:            213 94% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 224 71% 4%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-accent:             210 40% 96%;
+    --sidebar-accent-foreground:  222 47% 11%;
+    --sidebar-border:             214 32% 89%;
+    --sidebar-ring:               213 94% 40%;
 
-    --navbar-height: 3rem;
+    --navbar-height: 2.5rem;
+  }
+
+  /* ── Global font size reduction ─────────────────────────────────────── */
+  html {
+    font-size: 13px;   /* was browser default 16px — everything scales down */
   }
 
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    line-height: 1.4;
   }
 
-  /* Tabular nums for all financial data */
-  .font-mono {
+  /* Tighter heading rhythm */
+  h1 { font-size: 1.2rem;  font-weight: 600; line-height: 1.3; }
+  h2 { font-size: 1.05rem; font-weight: 600; line-height: 1.3; }
+  h3 { font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
+
+  /* Tabular nums everywhere numbers appear */
+
+  /* Enforce single-line cells in all data tables */
+  table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 0;          /* works with table-layout:fixed to enforce truncation */
+  }
+  /* But allow header cells to wrap if needed */
+  table th {
+    white-space: nowrap;
+  }
+
+  .font-mono, td, th {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Scrollbars — thin & subtle */
+  ::-webkit-scrollbar       { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(214 32% 82%); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(214 32% 70%); }
 }
 
 @layer components {
-  .metric-strip {
-    @apply h-16 flex items-center gap-8 px-6 border-b bg-background;
+
+  /* ── Compact table utility ─────────────────────────────────────────── */
+  .tbl-compact thead th {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground
+           px-3 py-1.5 bg-[#f5f5f5] border-b whitespace-nowrap;
+  }
+  .tbl-compact tbody td {
+    @apply text-[12px] px-3 py-[4px] border-b align-middle;
+  }
+  .tbl-compact tbody tr {
+    @apply transition-colors hover:bg-muted/30;
+  }
+  .tbl-compact tbody tr:nth-child(even) {
+    @apply bg-muted/10;
   }
 
+  /* ── Card ──────────────────────────────────────────────────────────── */
+  .card-compact {
+    @apply border rounded-lg bg-background shadow-[var(--shadow-card)] overflow-hidden;
+  }
+  .card-compact-header {
+    @apply flex items-center justify-between px-4 py-2.5 border-b;
+    h3 { @apply text-[13px] font-semibold text-foreground; }
+  }
+  .card-compact-body {
+    @apply p-4;
+  }
+
+  /* ── Status badges ─────────────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center rounded text-[10px] font-semibold px-1.5 py-0.5;
+  }
+  .badge-green  { @apply bg-success/10 text-success; }
+  .badge-blue   { @apply bg-primary/10 text-primary; }
+  .badge-amber  { @apply bg-warning/10 text-warning; }
+  .badge-red    { @apply bg-destructive/10 text-destructive; }
+  .badge-grey   { @apply bg-muted text-muted-foreground; }
+
+  /* ── Section label ─────────────────────────────────────────────────── */
+  .section-label {
+    @apply text-[10px] font-semibold uppercase tracking-widest text-muted-foreground;
+  }
+
+  /* ── Data cell (right-aligned numbers) ────────────────────────────── */
   .data-cell {
-    @apply font-mono text-sm tabular-nums;
+    @apply font-mono text-[12px] tabular-nums text-right;
   }
 
+  /* ── Page header strip ─────────────────────────────────────────────── */
+  .page-header {
+    @apply flex items-center justify-between px-5 py-2 border-b bg-white;
+  }
+  .page-header h1 {
+    @apply text-[14px] font-semibold tracking-tight text-foreground;
+  }
+
+  /* ── Metric strip ──────────────────────────────────────────────────── */
+  .metric-strip {
+    @apply flex items-center gap-6 px-5 py-2 border-b bg-white;
+  }
+  .metric-item label {
+    @apply block text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-0.5;
+  }
+  .metric-item span {
+    @apply text-[13px] font-semibold text-foreground;
+  }
+
+  /* ── Sidebar filter panel ──────────────────────────────────────────── */
+  .filter-sidebar {
+    @apply w-[190px] flex-shrink-0 border-r overflow-y-auto bg-[#fafafa] py-3 px-3 space-y-4;
+  }
+  .filter-sidebar label {
+    @apply block text-[11px] text-muted-foreground font-medium mb-1;
+  }
+  .filter-sidebar select,
+  .filter-sidebar input[type="text"],
+  .filter-sidebar input[type="date"] {
+    @apply w-full h-7 px-2 text-[12px] border rounded bg-white
+           focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary;
+  }
+
+  /* ── Section border ────────────────────────────────────────────────── */
   .section-border {
     @apply border rounded-lg;
   }
