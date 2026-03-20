@@ -53,6 +53,7 @@ export function DealTabs({ active, onSelect }: DealTabsProps) {
   }, []);
 
   const isRentRollActive = active.startsWith("rent-roll");
+  const isOsActive = active.startsWith("os-");
 
   return (
     <div className="border-b px-6">
