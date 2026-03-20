@@ -64,7 +64,7 @@ export function DealTabs({ active, onSelect }: DealTabsProps) {
             : active === tab.id;
 
           return (
-            <div key={tab.id} className="relative" ref={tab.subItems ? dropdownRef : undefined}>
+            <div key={tab.id} className="relative">
               <button
                 onClick={() => {
                   if (tab.subItems) {
