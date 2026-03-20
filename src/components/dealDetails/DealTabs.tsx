@@ -15,7 +15,20 @@ const tabs = [
       { id: "rent-roll-manage", label: "Manage Rent Rolls" },
     ],
   },
-  { id: "operating-statement", label: "Operating Statement" },
+  {
+    id: "operating-statement",
+    label: "Operating Statement",
+    subItems: [
+      { id: "os-summary", label: "Summary" },
+      { id: "os-cash-flows", label: "Cash Flows" },
+      { id: "os-revenue", label: "Revenue Analysis" },
+      { id: "os-adjustments", label: "Adjustments" },
+      { id: "os-comps", label: "Operating Statement Comps" },
+      { id: "os-market-comp", label: "Market Comp Data (Beta)" },
+      { id: "os-source-data", label: "Source Data" },
+      { id: "os-manage", label: "Manage Operating Statement" },
+    ],
+  },
   { id: "firstpass", label: "FirstPass" },
   { id: "sharing", label: "Sharing" },
 ];
