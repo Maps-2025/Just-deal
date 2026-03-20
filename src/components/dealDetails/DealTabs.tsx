@@ -60,7 +60,7 @@ export function DealTabs({ active, onSelect }: DealTabsProps) {
       <nav className="flex gap-0 -mb-px">
         {tabs.map((tab) => {
           const isActive = tab.subItems
-            ? isRentRollActive
+            ? (tab.id === "rent-roll" ? isRentRollActive : tab.id === "operating-statement" ? isOsActive : false)
             : active === tab.id;
 
           return (
